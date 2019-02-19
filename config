@@ -1,0 +1,25 @@
+# Compilation settings
+
+# Binary file name
+name=mcshub
+
+# Compiler prefix
+prefix=""
+
+# Link type
+link="static"
+
+# Include dirs
+includes=(
+    "/mnt/c/Users/ktlo/AppData/Roaming/vcpkg-linux/installed/x64-linux/include"
+)
+
+# Additional lib pathes
+lib_path=(
+    "/mnt/c/Users/ktlo/AppData/Roaming/vcpkg-linux/installed/x64-linux/lib"
+)
+
+# Dependencies (shouldn't be modified)
+lib=(
+    "stdc++fs" "yaml-cpp"
+)

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+#Get user friendly configs
+. config
+
+case "$1" in
+	INCLUDE)
+		INCLUDES=()
+		for path in "${includes[@]}"; do
+			INCLUDE+=("-I`printf %q "$path"`")
+		done
+		echo ${INCLUDE[@]}
+		;;
+	LIB_PATH)
+		LIB_PATH=()
+		for path in ${lib_path[@]}; do
+			LIB_PATH+=("-L`printf %q "$path"`")
+		done
+		echo ${LIB_PATH[@]}
+		;;
+	PREFIX) echo "$prefix";;
+	LIBS)
+		LIBS=()
+		for lib in ${lib[@]}; do
+			LIBS+=("-l`printf %q "$lib"`")
+		done
+		echo ${LIBS[@]}
+		;;
+	LINK_TYPE) echo "$link";;
+	NAME) echo "$name";;
+	*)
+	;;
+esac

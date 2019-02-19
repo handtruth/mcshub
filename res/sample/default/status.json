@@ -1,0 +1,15 @@
+{
+ "version": {
+  "name": "not exists",
+  "protocol": 3
+ },
+ "players": {
+  "max": 0,
+  "online": 0,
+  "sample": []
+ },
+ "description": {
+  "text": "Server ${hs:address}:${hs:port} doesn't exists!",
+  "color": "red"
+ }
+}

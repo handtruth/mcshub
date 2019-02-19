@@ -1,0 +1,8 @@
+/.vscode
+/.buildconfig
+/.vs
+/out
+/src/x86
+/src/*.o
+/src/*.a
+/test/*.test
