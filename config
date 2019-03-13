@@ -1,6 +1,7 @@
 # Compilation settings
 
-debug=true
+# Is debug environment
+debug=false
 
 # Binary file name
 name=mcshub
@@ -12,14 +13,10 @@ prefix=""
 link="static"
 
 # Include dirs
-includes=(
-    "/mnt/c/Users/ktlo/AppData/Roaming/vcpkg-linux/installed/x64-linux/include"
-)
+includes=()
 
 # Additional lib pathes
-lib_path=(
-    "/mnt/c/Users/ktlo/AppData/Roaming/vcpkg-linux/installed/x64-linux/lib"
-)
+lib_path=()
 
 # Dependencies (shouldn't be modified)
 lib=(

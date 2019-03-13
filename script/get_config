@@ -3,6 +3,10 @@
 #Get user friendly configs
 . config
 
+if [ -f "config.local" ]; then
+	. config.local
+fi
+
 case "$1" in
 	INCLUDE)
 		INCLUDES=()
@@ -29,10 +33,10 @@ case "$1" in
 	LINK_TYPE) echo "$link";;
 	NAME) echo "$name";;
 	DEBUG)
-		if [ -z "$debug" ]; then
-			echo ""
-		else
+		if [ "$debug" = true ]; then
 			echo "-DDEBUG -g"
+		else
+			echo ""
 		fi
 		;;
 	*)

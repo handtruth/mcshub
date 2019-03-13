@@ -12,7 +12,7 @@ GCC=${COMP} ${CC_ARGS}
 test: inotify.test config.test paket.test varint.test dns_packet.test
 
 clean:
-	rm -f *.test
+	rm -f *.test dns_packet.txt
 
 config.test: before
 	${GCC} config.cpp ${LIBS_ARGS} -o $@
