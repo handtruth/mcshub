@@ -3,10 +3,12 @@
 #include <initializer_list>
 #include <string>
 #include <vector>
+#include <functional>
 
 #include <sys/inotify.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/epoll.h>
 #include <fcntl.h>
 
 #include "primitives.h"
@@ -20,10 +22,15 @@ class event;
 class descriptor {
 public:
 	descriptor(const descriptor & other) = delete;
+	descriptor(descriptor && other) = delete;
+	virtual std::string name() const noexcept = 0;
 	virtual ~descriptor() {}
 protected:
 	descriptor() {}
 	handle_t handle;
+	bool operator==(const descriptor & other) const noexcept {
+		return handle == other.handle;
+	}
 	
 	friend class event;
 };
@@ -65,6 +72,7 @@ private:
 	sigset_t mask;
 public:
 	signal_d(std::initializer_list<sig> signals);
+	virtual std::string name() const noexcept override;
 	sig read();
 	virtual ~signal_d() override;
 };
@@ -106,7 +114,8 @@ public:
 	};
 	inotify_d();
 	const watch_d & add_watch(inev::inev_t mask, const std::string & path);
-	std::vector<const ino_event> read();
+	virtual std::string name() const noexcept override;
+	std::vector<ino_event> read();
 	virtual ~inotify_d() override;
 };
 
@@ -120,6 +129,11 @@ private:
 		mask = m;
 	}
 public:
+	watch_d(mcshub::watch_d&& other) : file(std::move(other.file)) {
+		handle = other.handle;
+		mask = other.mask;
+	}
+	virtual std::string name() const noexcept override;
 	const std::string & path() const {
 		return file;
 	}
@@ -137,7 +151,7 @@ public:
 
 class file_d : public descriptor {
 private:
-	std::string name;
+	std::string file;
 public:
 	enum class mode : int {
 		ro = O_RDONLY,
@@ -146,24 +160,50 @@ public:
 		aw = O_APPEND,
 	};
 	file_d(const std::string & path, mode m);
+	virtual std::string name() const noexcept override;
 	int read(byte_t bytes[], size_t length);
 	int write(const byte_t bytes[], size_t length);
 	virtual ~file_d() override;
 };
 
 namespace actions {
-	enum actions_t {
-		
+	enum actions_t : uint32_t {
+		epoll_in        = EPOLLIN,
+		epoll_out       = EPOLLOUT,
+		epoll_rdhup     = EPOLLRDHUP,
+		epoll_rpi       = EPOLLPRI,
+		epoll_err       = EPOLLERR,
+		epoll_hup       = EPOLLHUP,
+		epoll_et        = EPOLLET,
+		epoll_oneshot   = EPOLLONESHOT,
+		epoll_wakeup    = EPOLLWAKEUP,
+		epoll_exclusive = EPOLLEXCLUSIVE
 	};
 }
 
 class event : public descriptor {
-public:
-	struct record {
-		
+private:
+	struct record_t {
+		descriptor & d;
+		std::function<void(descriptor &, std::uint32_t)> action;
+		epoll_event ud;
+		record_t(record_t && other) = delete;
+		record_t(const record_t & other) = delete;
+		record_t(descriptor & f, const std::function<void(descriptor &, std::uint32_t)> & act, std::uint16_t events) : d(f) {
+			action = act;
+			ud.data.ptr = this;
+			ud.events = events;
+		}
 	};
+	std::vector<record_t *> data;
+	static void default_action(descriptor & f, std::uint32_t);
+	static const std::function<void(descriptor &, std::uint32_t)> default_action_p;
+public:
 	event();
-	void add(actions::actions_t events, const descriptor & f);
+	void add(descriptor & f, std::uint32_t events = actions::epoll_in, const std::function<void(descriptor &, std::uint32_t)> & action = default_action_p);
+	void remove(descriptor & f);
+	virtual std::string name() const noexcept override;
+	std::vector<std::reference_wrapper<descriptor>> read(int timeout = 0);
 
 	~event();
 };

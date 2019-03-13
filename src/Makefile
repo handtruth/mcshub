@@ -3,7 +3,7 @@ PROG=g++
 ARCHIVE=ar
 
 COMP=${PREFIX}${PROG}
-CC_ARGS=-std=c++17 ${INCLUDE} -c
+CC_ARGS=-std=c++17 ${INCLUDE} ${DEBUG} -c
 LIBS_ARGS=${LIB_PATH} -Wl,-B${LINK_TYPE} ${LIBS} -Wl,-Bdynamic
 LD=${COMP}
 CC=${COMP} ${CC_ARGS}
@@ -12,7 +12,7 @@ AR=${ARCHIVE} rvs
 build: main.o lib${NAME}.a
 	mkdir -p ../out
 	${LD} $^ ${LIBS_ARGS} -o ../out/${NAME}
-lib${NAME}.a: log.o settings.o hardcoded.o paket.o mc_pakets.o
+lib${NAME}.a: log.o settings.o hardcoded.o paket.o mc_pakets.o event_pull.o socket_d.o dns_server.o
 	${AR} $@ $^
 clean:
 	rm -f *.o *.a hardcoded-m.cpp
@@ -34,4 +34,10 @@ hardcoded.o: hardcoded.cpp
 paket.o: paket.cpp
 	${CC} $^
 mc_pakets.o: mc_pakets.cpp
+	${CC} $^
+event_pull.o: event_pull.cpp
+	${CC} $^
+socket_d.o: socket_d.cpp
+	${CC} $^
+dns_server.o: dns_server.cpp
 	${CC} $^

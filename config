@@ -1,5 +1,7 @@
 # Compilation settings
 
+debug=true
+
 # Binary file name
 name=mcshub
 

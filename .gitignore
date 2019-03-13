@@ -6,3 +6,4 @@
 /src/*.o
 /src/*.a
 /test/*.test
+/src/hardcoded-m.cpp
