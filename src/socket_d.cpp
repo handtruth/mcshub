@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include <netdb.h>
+#include <sys/ioctl.h>
 
 #include <cstring>
 #include <stdexcept>
@@ -37,6 +38,14 @@ std::string tcp_socket_d::name() const noexcept {
 	return "tcp socket (" + std::string(local_info) + " <-> " + std::string(remote_info) + ")";
 }
 
+size_t tcp_socket_d::avail() const {
+	std::size_t size;
+	if (ioctl(handle, FIONREAD, &size) == -1)
+		throw std::system_error(std::make_error_code(std::errc(errno)),
+            "error while getting available bytes");
+	return size;
+}
+
 int tcp_socket_d::read(byte_t bytes[], size_t length) {
     int r=recv(handle, bytes, length, 0);
     if (r < 0)
@@ -53,10 +62,7 @@ int tcp_socket_d::write(const byte_t bytes[], size_t length) {
     return r;
 }
 
-tcp_socket_d::~tcp_socket_d() {
-    if (handle > 0)
-        close(handle);
-}
+tcp_socket_d::~tcp_socket_d() {}
 
 int open_listener(const std::string & address, std::uint16_t port, endpoint_info & local_info, int sock_type) {
 	addrinfo initial, *sysaddr = nullptr, *a = nullptr;
@@ -133,10 +139,7 @@ tcp_socket_d tcp_listener_d::accept() {
 	return tcp_socket_d(client, local_info, socket_endpoint);
 }
 
-tcp_listener_d::~tcp_listener_d() {
-	if (handle > 0)
-		close(handle);
-}
+tcp_listener_d::~tcp_listener_d() {}
 
 udp_server_d::udp_server_d(const std::string & address, std::uint16_t port) {
     handle = open_listener(address, port, local_info, SOCK_DGRAM);
@@ -168,9 +171,6 @@ int udp_server_d::write(byte_t bytes[], size_t length, const endpoint_info & rem
     return r;
 }
 
-udp_server_d::~udp_server_d() {
-    if (handle > 0)
-        close(handle);
-}
+udp_server_d::~udp_server_d() {}
 
 } // mcshub

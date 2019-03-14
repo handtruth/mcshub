@@ -46,7 +46,7 @@ struct endpoint_info {
 	}
 };
 
-class tcp_socket_d : public descriptor {
+class tcp_socket_d : public event_member_base {
 private:
 	endpoint_info local_info;
 	endpoint_info remote_info;
@@ -63,13 +63,14 @@ public:
 	const endpoint_info & remote_endpoint() const noexcept {
 		return remote_info;
 	}
+	size_t avail() const;
 	int read(byte_t bytes[], size_t length);
 	int write(const byte_t bytes[], size_t length);
 	virtual ~tcp_socket_d() override;
 	friend class tcp_listener_d;
 };
 
-class tcp_listener_d : public descriptor {
+class tcp_listener_d : public event_member_base {
 private:
 	endpoint_info local_info;
 	int backlog;
@@ -84,7 +85,7 @@ public:
 	virtual ~tcp_listener_d() override;
 };
 
-class udp_server_d : public descriptor {
+class udp_server_d : public event_member_base {
 private:
 	endpoint_info local_info;
 public:

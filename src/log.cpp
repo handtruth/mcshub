@@ -20,7 +20,7 @@ void log_base::write_private(log_level level, const std::string & message) {
 	write("[" + lvl_strs[(int)level] + "]:" + ' ' + message);
 }
 
-void log_base::write_exception(log_level level, const std::exception exception) {
+void log_base::write_exception(log_level level, const std::exception & exception) {
 	if ((int)level > (int)lvl)
 		return;
 	write("[" + lvl_strs[(int)level] + "]:" + ' ' + typeid(exception).name() + ": " + exception.what());

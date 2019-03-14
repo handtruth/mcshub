@@ -13,17 +13,8 @@ namespace mcshub {
 
 namespace fields {
 
-	//class field_base {
-	//public:
-		//virtual size_t size() const noexcept = 0;
-		//virtual int read(const byte_t bytes[], size_t length) = 0;
-		//virtual int write(byte_t bytes[], size_t length) const = 0;
-		//virtual operator std::string() const = 0;
-		//virtual ~field_base() {}
-	//};
-
 	template <typename T>
-	class field { //: public field_base {
+	class field {
 	public:
 		typedef T value_type;
 		T value;
@@ -203,6 +194,10 @@ namespace pakets {
 		template <typename first, typename ...other>
 		static std::string enum_next_as_string(const first & field, const other &... fields) {
 			return std::string(field) + ((", " + std::string(fields)) + ...);
+		}
+		template <typename first>
+		static std::string enum_next_as_string(const first & field) {
+			return std::string(field);
 		}
 
 		static std::string enum_next_as_string() {

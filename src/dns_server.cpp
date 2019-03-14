@@ -1,4 +1,5 @@
 #include "dns_server.h"
+
 #include <cstring>
 #include <stdexcept>
 
@@ -46,9 +47,9 @@ int dns_packet::question_t::read(const byte_t bytes[], size_t length) {
 	int i = 0;
 	char gather[257];
 	while (true) {
-		if (i >= length)
-			return -1;
 		byte_t byte = bytes[i];
+		if (i + byte>= length)
+			return -1;
 		if (byte == 0)
 			break;
 		std::memcpy(gather + i, bytes + i + 1, byte);
@@ -56,6 +57,8 @@ int dns_packet::question_t::read(const byte_t bytes[], size_t length) {
 		gather[i] = '.';
 		i++;
 	}
+	if (i <= 0)
+		return -1;
 	name = std::string(gather, i - 1);
 	i++;
 	type = (record_t)swp16int(*reinterpret_cast<const std::uint16_t *>(bytes + i));

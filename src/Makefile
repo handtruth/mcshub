@@ -12,7 +12,7 @@ AR=${ARCHIVE} rvs
 build: main.o lib${NAME}.a
 	mkdir -p ../out
 	${LD} $^ ${LIBS_ARGS} -o ../out/${NAME}
-lib${NAME}.a: log.o settings.o hardcoded.o paket.o mc_pakets.o event_pull.o socket_d.o dns_server.o
+lib${NAME}.a: log.o settings.o hardcoded.o paket.o mc_pakets.o event_pull.o socket_d.o dns_server.o reallobuf.o server.o
 	${AR} $@ $^
 clean:
 	rm -f *.o *.a hardcoded-m.cpp
@@ -40,4 +40,8 @@ event_pull.o: event_pull.cpp
 socket_d.o: socket_d.cpp
 	${CC} $^
 dns_server.o: dns_server.cpp
+	${CC} $^
+reallobuf.o: reallobuf.cpp
+	${CC} $^
+server.o: server.cpp
 	${CC} $^

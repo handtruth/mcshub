@@ -3,31 +3,22 @@
 #include <iostream>
 #include "socket_d.h"
 #include "dns_server.h"
-
-mcshub::event pull;
+#include "server.h"
 
 int main(int argc, char *argv[]) {
 	using namespace mcshub;
+	event pull;
 	stdout_log l(log_level::debug);
 	log = &l;
 	tcp_listener_d listener("0.0.0.0", 25565);
 	log->verbose("start server on " + listener.name());
-	pull.add(listener, actions::epoll_in, [](descriptor & fd, std::uint32_t events){
-		tcp_listener_d & tcp_l = dynamic_cast<tcp_listener_d &>(fd);
-		auto sock = new tcp_socket_d(tcp_l.accept());
-		log->debug("NEW CONNECTION! " + sock->name());
-		pull.add(*sock, actions::epoll_in | actions::epoll_out | actions::epoll_rdhup, [](descriptor & fd, std::uint32_t events) {
-			tcp_socket_d & sock = dynamic_cast<tcp_socket_d &>(fd);
-			if (events & actions::epoll_rdhup) {
-				log->debug("DISCONNECTED! " + sock.name());
-				pull.remove(sock);
-				delete &sock;
-			} else if (events & actions::epoll_in) {
-				byte_t buffer[256];
-				log->debug("GOT ANSWER!!!");
-				int n = sock.read(buffer, 256);
-				while(buffer[n] == '\n' && n > 0) n--;
-				log->info(std::string(reinterpret_cast<const char *>(buffer), n));
+	pull.add(listener, [&listener, &pull](descriptor & fd, std::uint32_t events) {
+		client * c = new client(listener.accept());
+		mcshub::log->verbose("new client: " + std::string(c->socket().remote_endpoint()));
+		pull.add(c->socket(), actions::epoll_in | actions::epoll_rdhup, [c](descriptor & fd, std::uint32_t events) {
+			if (!((*c)(fd, events))) {
+				mcshub::log->verbose("dissconnected: " + std::string(c->socket().remote_endpoint()));
+				delete c;
 			}
 		});
 	});

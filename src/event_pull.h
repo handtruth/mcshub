@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <memory>
 
 #include <sys/inotify.h>
 #include <sys/types.h>
@@ -22,16 +23,52 @@ class event;
 class descriptor {
 public:
 	descriptor(const descriptor & other) = delete;
-	descriptor(descriptor && other) = delete;
+	descriptor(descriptor && other) : handle(other.handle) {
+		other.handle = -1;
+	}
 	virtual std::string name() const noexcept = 0;
-	virtual ~descriptor() {}
-protected:
-	descriptor() {}
-	handle_t handle;
+	virtual void close();
+	virtual ~descriptor();
 	bool operator==(const descriptor & other) const noexcept {
 		return handle == other.handle;
 	}
+	virtual operator bool() const;
+protected:
+	descriptor() {}
+	handle_t handle;
 	
+	friend class event;
+};
+
+class event_member_base : public descriptor {
+public:
+	event_member_base() {}
+	event_member_base(event_member_base && other) : descriptor(static_cast<descriptor &&>(other)) {
+		record.reset(other.record.release());
+		if (record) {
+			record->efd = this;
+		}
+	}
+	virtual void close() override;
+private:
+	struct record_base {
+		descriptor * efd;
+		record_base(record_base && other) = delete;
+		record_base(const record_base & other) = delete;
+		record_base(descriptor & fd) : efd(&fd) {}
+		virtual void operator()(std::uint32_t events) = 0;
+		virtual ~record_base();
+	};
+	template <typename F>
+	struct record_t : public record_base {
+		F act;
+		record_t(descriptor & fd, F action) : record_base(fd), act(action) {}
+		virtual void operator()(std::uint32_t events) override {
+			act(*efd, events);
+		}
+	};
+private:
+	std::unique_ptr<record_base> record;
 	friend class event;
 };
 
@@ -67,7 +104,7 @@ enum class sig {
 	file_size_limit     = SIGXFSZ,
 };
 
-class signal_d : public descriptor {
+class signal_d : public event_member_base {
 private:
 	sigset_t mask;
 public:
@@ -101,7 +138,7 @@ namespace inev {
 
 class watch_d;
 
-class inotify_d : public descriptor {
+class inotify_d : public event_member_base {
 private:
 	std::vector<watch_d> watchers;
 public:
@@ -149,7 +186,7 @@ public:
 	friend class inotify_d;
 };
 
-class file_d : public descriptor {
+class file_d : public event_member_base {
 private:
 	std::string file;
 public:
@@ -183,29 +220,25 @@ namespace actions {
 
 class event : public descriptor {
 private:
-	struct record_t {
-		descriptor & d;
-		std::function<void(descriptor &, std::uint32_t)> action;
-		epoll_event ud;
-		record_t(record_t && other) = delete;
-		record_t(const record_t & other) = delete;
-		record_t(descriptor & f, const std::function<void(descriptor &, std::uint32_t)> & act, std::uint16_t events) : d(f) {
-			action = act;
-			ud.data.ptr = this;
-			ud.events = events;
-		}
-	};
-	std::vector<record_t *> data;
 	static void default_action(descriptor & f, std::uint32_t);
-	static const std::function<void(descriptor &, std::uint32_t)> default_action_p;
+	void add(event_member_base & fd, event_member_base::record_base * cntxt, std::uint32_t events);
 public:
 	event();
-	void add(descriptor & f, std::uint32_t events = actions::epoll_in, const std::function<void(descriptor &, std::uint32_t)> & action = default_action_p);
-	void remove(descriptor & f);
+	template <typename F>
+	void add(event_member_base & fd, std::uint32_t events, F action) {
+		auto cntxt = new event_member_base::record_t<F>(fd, action);
+		add(fd, cntxt, events);
+	}
+	template <typename F>
+	void add(event_member_base & fd, F action) {
+		auto cntxt = new event_member_base::record_t<F>(fd, action);
+		add(fd, cntxt, actions::epoll_in);
+	}
+	void remove(event_member_base & fd);
 	virtual std::string name() const noexcept override;
 	std::vector<std::reference_wrapper<descriptor>> read(int timeout = 0);
 
-	~event();
+	virtual ~event() override;
 };
 
 } // mcshub

@@ -34,18 +34,23 @@ log_level str2lvl(const std::string & verb) {
 }
 
 void operator>>(const YAML::Node & node, config::server_record & record) {
-	if (auto address = node["address"])
-		record.address = address.as<std::string>();
-	if (auto port = node["port"])
-		record.port = port.as<std::uint16_t>();
-	if (auto status = node["status"])
-		record.status = status.as<std::string>();
-	if (auto login = node["login"])
-		record.login = login.as<std::string>();
-	if (auto log = node["log"])
-		record.log = log.as<std::string>();
-	for (auto item : node["vars"]) {
-		record.vars[item.first.as<std::string>()] = item.second.as<std::string>();
+	if (node.IsScalar()) {
+		auto node_record = YAML::Load(node.as<std::string>() + "/config.yml");
+		node_record >> record; // TODO
+	} else {
+		if (auto address = node["address"])
+			record.address = address.as<std::string>();
+		if (auto port = node["port"])
+			record.port = port.as<std::uint16_t>();
+		if (auto status = node["status"])
+			record.status = status.as<std::string>();
+		if (auto login = node["login"])
+			record.login = login.as<std::string>();
+		if (auto log = node["log"])
+			record.log = log.as<std::string>();
+		for (auto item : node["vars"]) {
+			record.vars[item.first.as<std::string>()] = item.second.as<std::string>();
+		}
 	}
 }
 

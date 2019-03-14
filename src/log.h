@@ -19,7 +19,7 @@ class log_base {
 private:
 	log_level lvl;
 	void write_private(log_level level, const std::string & message);
-	void write_exception(log_level level, const std::exception exception);
+	void write_exception(log_level level, const std::exception & exception);
 protected:
 	log_base(log_level level) noexcept : lvl(level) {}
 	virtual void write(const std::string & message) = 0;
