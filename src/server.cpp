@@ -11,7 +11,6 @@ namespace mcshub {
 class bad_request : public std::runtime_error {
 public:
 	bad_request(const std::string & message) : std::runtime_error(message) {}
-
 };
 
 client::client(tcp_socket_d && so) : sock(std::move(so)), state(state_enum::handshake), rem(0) {
@@ -52,10 +51,12 @@ int client::handshake(size_t avail) {
 	std::int32_t size;
 	std::int32_t id;
 	int s = pakets::head(buffer.data(), avail, size, id);
+	//log->fatal("2 == " + std::to_string(s));
 	if (s == -1) return -1;
 	if (id != pakets::ids::handshake)
 		throw bad_request("handshake packet expected");
 	s = hs.read(buffer.data(), avail);
+	//log->fatal("WAS HERE: " + std::to_string(s) + ":" + std::to_string(avail) + " size:" + std::to_string(size));
 	if (s == -1) return -1;
 	log->verbose("client " + std::string(sock.remote_endpoint()) +
 		" send handshake: " + std::to_string(hs));
@@ -85,14 +86,14 @@ int client::status(size_t avail) {
 		log->debug("client " + std::string(sock.remote_endpoint()) + " send status request");
 		pakets::response res;
 		res.message() = file_content::default_status; // TODO
-		size_t outsz = res.size();
+		size_t outsz = res.size() + 10;
 		outbuff.probe(outsz);
-		s = res.write(outbuff.data(), outsz);
+		int k = res.write(outbuff.data(), outsz);
 #ifdef DEBUG
-		if (s < 0 || s != outsz)
+		if (k < 0)
 			throw paket_error("FATAL: PAKET SIZE != PAKET WRITE");
 #endif
-		int k = sock.write(outbuff.data(), outsz);
+		k = sock.write(outbuff.data(), outsz);
 		if (k == -1)
 			throw_sock_error();
 		return s;
@@ -100,7 +101,6 @@ int client::status(size_t avail) {
 	case pakets::ids::pingpong: {
 		pakets::pinpong pp;
 		s = pp.read(buffer.data(), avail);
-		log->fatal("WAS HERE: " + std::to_string(s) + ":" + std::to_string(avail));
 		if (s == -1) return -1;
 		log->debug("client " + std::string(sock.remote_endpoint()) +
 			" send ping pong: " + std::to_string(pp));
@@ -125,18 +125,22 @@ bool client::operator()(descriptor & fd, std::uint32_t events) {
 		if (events & actions::epoll_in) {
 			receive();
 			while (rem > 0) {
+				log->debug("reminder bytes: " + std::to_string(rem));
 				int s = process_request(rem);
 				if (s < 0)
 					return true;
 				rem -= s;
 				buffer.move(s);
-				log->debug("reminder bytes: " + std::to_string(rem));
 			}
+			return true;
 		}
 		else if (events & actions::epoll_rdhup) {
 			log->verbose("client " + std::string(sock.remote_endpoint()) + " disconnected");
 			return false;
 		}
+	} catch (paket_error & pe) {
+		log->error("pket error from " + std::string(sock.remote_endpoint()));
+		log->error(pe);
 	} catch (std::exception & e) {
 		log->error("processing client " + std::string(sock.remote_endpoint()));
 		log->error(e);

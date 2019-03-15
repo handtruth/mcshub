@@ -27,7 +27,8 @@ int main() {
         assert_equals(hs1_sz, written);
         assert(written > 0);
         pakets::handshake hs2;
-        hs2.read(bytes, sz);
+        int rsz = hs2.read(bytes, sz);
+        assert_equals(written, rsz);
         assert_equals(hs1.version(), hs2.version());
         assert_equals(hs1.address(), hs2.address());
         assert_equals(hs1.port(), hs2.port());

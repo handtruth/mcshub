@@ -184,6 +184,7 @@ std::vector<std::reference_wrapper<descriptor>> event::read(int timeout) {
 		auto event = &events[i];
 		auto & record = *reinterpret_cast<event_member_base::record_base *>(event->data.ptr);
 		record(event->events);
+		result.push_back(*(record.efd));
 	}
 	return result;
 }

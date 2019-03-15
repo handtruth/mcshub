@@ -82,7 +82,7 @@ size_t size_varint(std::int32_t value);
 int read_varint(const byte_t bytes[], size_t length, std::int32_t & value);
 int write_varint(byte_t bytes[], size_t length, std::int32_t value);
 
-class paket_error : std::runtime_error {
+class paket_error : public std::runtime_error {
 public:
 	paket_error(const std::string & message) : std::runtime_error(message) {}
 };
@@ -146,9 +146,11 @@ namespace pakets {
 	public:
 		int write(byte_t bytes[], size_t length) const {
 			// HEAD
+			// size of size
 			int k = write_varint(bytes, length, size_varint(paket_id) + size());
 			if (k < 0)
 				return -1;
+			// size of id
 			int s = write_varint(bytes + k, length - k, paket_id);
 			if (s < 0)
 				return -1;
@@ -188,7 +190,7 @@ namespace pakets {
 			if (size != comp_size + s)
 				throw paket_error("wrong paket size (" + std::to_string(size) + " expected, got " + std::to_string(comp_size + s) + ")");
 			else
-				return comp_size + s;
+				return comp_size + l;
 		}
 	private:
 		template <typename first, typename ...other>
