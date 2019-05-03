@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <sstream>
 
 namespace mcshub {
 
@@ -96,6 +97,10 @@ int dns_packet::question_t::write(byte_t bytes[], size_t length) const {
 	return pos + (sizeof(record_t) + sizeof(class_t));
 }
 
+dns_packet::record_t dns_packet::answer_t::a_rdata::type() const noexcept {
+	return record_t::A;
+}
+
 size_t dns_packet::answer_t::a_rdata::size() const noexcept {
 	return 4;
 }
@@ -112,6 +117,10 @@ int dns_packet::answer_t::a_rdata::write(byte_t bytes[], size_t length) const {
 		return -1;
 	*reinterpret_cast<std::uint32_t *>(bytes) = data;
 	return 4;
+}
+
+dns_packet::record_t dns_packet::answer_t::aaaa_rdata::type() const noexcept {
+	return record_t::AAAA;
 }
 
 size_t dns_packet::answer_t::aaaa_rdata::size() const noexcept {
@@ -148,8 +157,31 @@ int dns_packet::answer_t::ns_txt_rdata::write(byte_t bytes[], size_t length) con
 	return 16;
 }
 
+dns_packet::record_t dns_packet::answer_t::ns_rdata::type() const noexcept {
+	return record_t::NS;
+}
+
+dns_packet::record_t dns_packet::answer_t::txt_rdata::type() const noexcept {
+	return record_t::TXT;
+}
+
 size_t dns_packet::answer_t::size() const noexcept {
 	return sizeof(std::uint32_t) + sizeof(std::uint16_t) + rdata->size();
+}
+
+dns_packet::answer_t::rdata_t * create_rdata(dns_packet::record_t type) {
+	switch (type) {
+	case dns_packet::record_t::A:
+		return new dns_packet::answer_t::a_rdata();
+	case dns_packet::record_t::AAAA:
+		return new dns_packet::answer_t::aaaa_rdata();
+	case dns_packet::record_t::NS:
+		return new dns_packet::answer_t::ns_rdata();
+	case dns_packet::record_t::TXT:
+		return new dns_packet::answer_t::txt_rdata();
+	default:
+		throw std::runtime_error("unsupported dns record type");
+	}
 }
 
 int dns_packet::answer_t::read(const byte_t bytes[], size_t length) {
@@ -165,21 +197,9 @@ int dns_packet::answer_t::read(const byte_t bytes[], size_t length) {
 		return -1;
 	if (rdata)
 		delete rdata;
-	switch (type) {
-	case record_t::A:
-		rdata = new a_rdata();
-		break;
-	case record_t::AAAA:
-		rdata = new aaaa_rdata();
-		break;
-	case record_t::NS:
-	case record_t::TXT:
-		rdata = new ns_txt_rdata();
-		break;
-	default:
-		throw std::runtime_error("unsupported dns record type");
-	}
-	rdata->read(bytes + s + (sizeof(std::uint32_t) + sizeof(std::uint16_t)), rsize);
+	rdata_t * new_rdata = create_rdata(type);
+	new_rdata->read(bytes + s + (sizeof(std::uint32_t) + sizeof(std::uint16_t)), rsize);
+	rdata = new_rdata;
 	return len;
 }
 
@@ -260,10 +280,40 @@ void dns_packet::answer_A(const std::string & name, std::uint32_t ip_addr, std::
 	answer.ttl = ttl;
 	answer.qclass = class_t::IN;
 	answer.type = record_t::A;
-	auto * rdata = new answer_t::a_rdata();
-	rdata->data = swp32int(ip_addr);
+	auto * rdata = new answer_t::a_rdata(swp32int(ip_addr));
 	answer.rdata = rdata;
 	answers.push_back(std::move(answer));
+}
+
+std::shared_ptr<dns_packet::answer_t::rdata_t> dns_packet::parse_dns_record(const std::string & data) {
+	std::stringstream scanner(data);
+	std::string type_s;
+	scanner >> type_s;
+	std::string content;
+	std::getline(scanner, content);
+	std::shared_ptr<dns_packet::answer_t::rdata_t> result;
+	if (type_s == "A") {
+		std::stringstream ip_scanner(content);
+		std::uint32_t ip = 0;
+		std::string byte;
+		int count = 0;
+		while (std::getline(ip_scanner, byte, '.')) {
+			count++;
+			ip = (ip << 8) | std::stoi(byte);
+		}
+		if (count != 4)
+			throw std::runtime_error("dns record parse problem \"" + data + "\": bad number of bytes in ip address");
+		result = std::make_shared<dns_packet::answer_t::a_rdata>(ip);
+	} else if (type_s == "AAAA") {
+		throw std::runtime_error("NOT IMLEMENTED YET");
+	} else if (type_s == "NS") {
+		throw std::runtime_error("NOT IMLEMENTED YET");
+	} else if (type_s == "TXT") {
+		throw std::runtime_error("NOT IMLEMENTED YET");
+	} else {
+		throw std::runtime_error("unrecognised dns record type \"" + type_s + "\"");
+	}
+	return result;
 }
 
 } // mcshub

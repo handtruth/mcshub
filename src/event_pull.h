@@ -1,3 +1,6 @@
+#ifndef _EVENT_PULL_HEAD
+#define _EVENT_PULL_HEAD
+
 #include <cinttypes>
 #include <csignal>
 #include <initializer_list>
@@ -114,78 +117,6 @@ public:
 	virtual ~signal_d() override;
 };
 
-namespace inev {
-	enum inev_t : std::uint32_t {
-		access        = IN_ACCESS,
-		attrib        = IN_ATTRIB,
-		close_write   = IN_CLOSE_WRITE,
-		close_nowrite = IN_CLOSE_NOWRITE,
-		create        = IN_CREATE,
-		in_delete     = IN_DELETE,
-		delete_self   = IN_DELETE_SELF,
-		modify        = IN_MODIFY,
-		move_self     = IN_MOVE_SELF,
-		moved_from    = IN_MOVED_FROM,
-		moved_to      = IN_MOVED_TO,
-		open          = IN_OPEN,
-
-		// Combined
-		move          = IN_MOVE,
-		close         = IN_CLOSE,
-		all           = IN_ALL_EVENTS,
-	};
-}
-
-class watch_d;
-
-class inotify_d : public event_member_base {
-private:
-	std::vector<watch_d> watchers;
-public:
-	struct ino_event {
-		const watch_d & watch;
-		inev::inev_t mask;
-	private:
-		ino_event(const watch_d & w, inev::inev_t m) : watch(w), mask(m) {}
-		friend inotify_d;
-	};
-	inotify_d();
-	const watch_d & add_watch(inev::inev_t mask, const std::string & path);
-	virtual std::string name() const noexcept override;
-	std::vector<ino_event> read();
-	virtual ~inotify_d() override;
-};
-
-class watch_d : public descriptor {
-private:
-	std::string file;
-	inev::inev_t mask;
-	watch_d(int h, const std::string & file, inev::inev_t m) {
-		handle = h;
-		this->file = file;
-		mask = m;
-	}
-public:
-	watch_d(mcshub::watch_d&& other) : file(std::move(other.file)) {
-		handle = other.handle;
-		mask = other.mask;
-	}
-	virtual std::string name() const noexcept override;
-	const std::string & path() const {
-		return file;
-	}
-	inev::inev_t event_mask() const {
-		return mask;
-	}
-	bool operator==(const watch_d & other) const noexcept {
-		return handle == other.handle;
-	}
-	bool operator!=(const watch_d & other) const noexcept {
-		return handle != other.handle;
-	}
-	friend class inotify_d;
-};
-
 class file_d : public event_member_base {
 private:
 	std::string file;
@@ -236,9 +167,11 @@ public:
 	}
 	void remove(event_member_base & fd);
 	virtual std::string name() const noexcept override;
-	std::vector<std::reference_wrapper<descriptor>> read(int timeout = 0);
+	std::vector<std::reference_wrapper<descriptor>> pull(int timeout = 0);
 
 	virtual ~event() override;
 };
 
 } // mcshub
+
+#endif // _EVENT_PULL_HEAD

@@ -4,6 +4,7 @@
 #include <cinttypes>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "primitives.h"
 
@@ -59,6 +60,7 @@ struct dns_packet {
 	};
 	struct answer_t : public question_t {
 		struct rdata_t {
+			virtual record_t type() const noexcept = 0;
 			virtual size_t size() const noexcept = 0;
 			virtual int read(const byte_t bytes[], size_t length) = 0;
 			virtual int write(byte_t bytes[], size_t length) const = 0;
@@ -66,12 +68,15 @@ struct dns_packet {
 		};
 		struct a_rdata : public rdata_t {
 			std::uint32_t data;
+			constexpr a_rdata(std::uint32_t d = 0) : data(d) {}
+			virtual record_t type() const noexcept override;
 			virtual size_t size() const noexcept override;
 			virtual int read(const byte_t bytes[], size_t length) override;
 			virtual int write(byte_t bytes[], size_t length) const override;
 		};
 		struct aaaa_rdata : public rdata_t {
 			byte_t data[16];
+			virtual record_t type() const noexcept override;
 			virtual size_t size() const noexcept override;
 			virtual int read(const byte_t bytes[], size_t length) override;
 			virtual int write(byte_t bytes[], size_t length) const override;
@@ -83,6 +88,12 @@ struct dns_packet {
 			virtual int write(byte_t bytes[], size_t length) const override;
 			virtual ~ns_txt_rdata() override {}
 		};
+		struct ns_rdata : public ns_txt_rdata {
+			virtual record_t type() const noexcept override;
+		};
+		struct txt_rdata : public ns_txt_rdata {
+			virtual record_t type() const noexcept override;
+		};
 
 		answer_t() {};
 		answer_t(const answer_t & other) = delete;
@@ -92,7 +103,7 @@ struct dns_packet {
 		}
 
 		std::uint32_t ttl;
-		rdata_t * rdata = nullptr;
+		const rdata_t * rdata = nullptr;
 		int qwrite(byte_t bytes[], size_t length) const {
 			return question_t::write(bytes, length);
 		}
@@ -118,6 +129,7 @@ struct dns_packet {
 	int write(byte_t bytes[], size_t length) const;
 
 	void answer_A(const std::string & name, std::uint32_t ip_addr, std::uint32_t ttl);
+	static std::shared_ptr<dns_packet::answer_t::rdata_t> parse_dns_record(const std::string & data);
 };
 
 }

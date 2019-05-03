@@ -7,7 +7,6 @@
 #include <system_error>
 
 #include <sys/signalfd.h>
-#include <sys/inotify.h>
 #include <sys/epoll.h>
 #include <unistd.h>
 
@@ -16,13 +15,14 @@
 namespace mcshub {
 
 void descriptor::close() {
-	::close(handle);
-	handle = -1;
+	if (handle != -1) {
+		::close(handle);
+		handle = -1;
+	}
 }
 
 descriptor::~descriptor() {
-	if (handle != -1)
-		::close(handle);
+	::close(handle);
 }
 
 descriptor::operator bool() const {
@@ -64,59 +64,6 @@ sig signal_d::read() {
 }
 
 signal_d::~signal_d() {}
-
-inotify_d::inotify_d() {
-	handle = inotify_init();
-	if (handle < 0)
-		throw std::system_error(std::make_error_code(std::errc(errno)),
-			"failed to create inotify in mcshub::inotify_d constructor");
-}
-
-const watch_d & inotify_d::add_watch(inev::inev_t mask, const std::string & path) {
-	int h = inotify_add_watch(handle, path.c_str(), mask);
-	if (h < 0)
-		throw std::system_error(std::make_error_code(std::errc(errno)),
-			"failed to add watcher to inotify in mcshub::inotify_d::add_watch (path is \""
-				+ path + "\", watch mask " + std::to_string(mask) + ")");
-	watchers.emplace_back(watch_d(h, path, mask));
-	return watchers.back();
-}
-
-std::string inotify_d::name() const noexcept {
-	return "inotify";
-}
-
-std::vector<inotify_d::ino_event> inotify_d::read() {
-	static const ssize_t buff_size = 50*(sizeof(inotify_event) + 16);
-	byte_t buffer[buff_size];
-	std::vector<ino_event> result;
-	ssize_t length = ::read(handle, buffer, buff_size);
-	if (length < 0)
-		throw std::system_error(std::make_error_code(std::errc(errno)),
-			"failed to read inotify fd in mcshub::inotify_d::read");
-	ssize_t i = 0;
-	while(i < length) {
-		inotify_event *event = reinterpret_cast<inotify_event *>(buffer + i);
-		if (event->len) {
-			const watch_d * watch = nullptr;
-			for (const watch_d & w : watchers) {
-				if (w.handle == event->wd)
-					watch = &w;
-			}
-			if (watch == nullptr)
-				throw std::runtime_error("inotify watcher isn't present in set (mcshub::inotify_d::read)");
-			result.emplace_back(ino_event(*watch, inev::inev_t(event->mask)));
-		}
-		i += sizeof(inotify_event) + event->len;
-	}
-	return result;
-}
-
-inotify_d::~inotify_d() {}
-
-std::string watch_d::name() const noexcept {
-	return "watch (" + file + ")";
-}
 
 file_d::file_d(const std::string & path, file_d::mode m) : file(path) {
 	handle = open(path.c_str(), int(m));
@@ -173,7 +120,7 @@ std::string event::name() const noexcept {
 	return "event poll";
 }
 
-std::vector<std::reference_wrapper<descriptor>> event::read(int timeout) {
+std::vector<std::reference_wrapper<descriptor>> event::pull(int timeout) {
 	static const int max_event_n = 7;
 	epoll_event events[max_event_n];
 	int catched = epoll_wait(handle, events, max_event_n, timeout);

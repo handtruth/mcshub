@@ -20,5 +20,5 @@ lib_path=()
 
 # Dependencies (shouldn't be modified)
 lib=(
-    "stdc++fs" "yaml-cpp"
+    "stdc++fs" "yaml-cpp" "pthread"
 )

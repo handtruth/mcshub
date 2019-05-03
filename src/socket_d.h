@@ -23,26 +23,44 @@ struct endpoint_info {
 		sockaddr_in6 addr_in6;
 	} info;
 
+	socklen_t addr_len() const {
+		switch (addr_family()) {
+			case family_t::ipv4: return sizeof(sockaddr_in);
+			case family_t::ipv6: return sizeof(sockaddr_in6);
+			default: return -1;
+		}
+	}
+
 	family_t addr_family() const {
 		return (family_t)info.addr.sa_family;
 	}
 	std::uint16_t port() const {
 		uint16_t p;
 		switch (addr_family()) {
-		case family_t::ipv4:
-			p = info.addr_in.sin_port;
-			break;
-		case family_t::ipv6:
-			p = info.addr_in6.sin6_port;
-			break;
-		default:
-			return 0;
+			case family_t::ipv4:
+				p = info.addr_in.sin_port;
+				break;
+			case family_t::ipv6:
+				p = info.addr_in6.sin6_port;
+				break;
+			default:
+				return 0;
 		}
 		return p >> 8 | p << 8;
 	}
 	std::string address() const;
 	operator std::string() const {
 		return address() + ':' + std::to_string(port());
+	}
+};
+
+struct connection_info {
+	endpoint_info endpoint;
+	int sock_type;
+	int protocol;
+	static std::vector<connection_info> resolve(const std::string & address, const std::string & port);
+	static std::vector<connection_info> resolve(const std::string & address, std::uint16_t port) {
+		return resolve(address, std::to_string(port));
 	}
 };
 
@@ -56,6 +74,10 @@ public:
 		handle = other.handle;
 		other.handle = -1;
 	}
+	tcp_socket_d() {
+		handle = -1;
+	}
+	void open(const std::vector<connection_info> & infos);
 	virtual std::string name() const noexcept override;
 	const endpoint_info & local_endpoint() const noexcept {
 		return local_info;

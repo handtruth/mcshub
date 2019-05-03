@@ -3,6 +3,7 @@
 #include <array>
 #include <typeinfo>
 #include <iostream>
+#include <limits>
 
 namespace mcshub {
 

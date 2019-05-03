@@ -113,6 +113,10 @@ namespace pakets {
 		constexpr auto field() noexcept -> decltype(std::get<i>(*this).value) & {
 			return std::get<i>(*this).value;
 		}
+		template <int i>
+		constexpr auto field() const noexcept -> const decltype(std::get<i>(*this).value) & {
+			return std::get<i>(*this).value;
+		}
 		constexpr int id() const noexcept {
 			return paket_id;
 		}

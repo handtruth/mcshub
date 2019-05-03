@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <system_error>
 
+#include "putil.h"
+
 namespace mcshub {
 
 std::string endpoint_info::address() const {
@@ -32,6 +34,45 @@ std::string endpoint_info::address() const {
 tcp_socket_d::tcp_socket_d(int fd, const endpoint_info & local, const endpoint_info & remote) :
     local_info(local), remote_info(remote) {
     handle = fd;
+}
+
+std::vector<connection_info> connection_info::resolve(const std::string & address, const std::string & port) {
+	addrinfo initial, *sysaddr = nullptr, *a = nullptr;
+	std::memset(&initial, 0, sizeof(addrinfo));
+	initial.ai_family = AF_UNSPEC;
+	initial.ai_socktype = SOCK_STREAM;
+	
+	finnaly({
+		if (sysaddr != nullptr)
+			freeaddrinfo(sysaddr);
+	});
+
+	if (int s = getaddrinfo(address.c_str(), port.c_str(), &initial, &sysaddr)) {
+		throw std::runtime_error("failed to resolve socket address (getaddrinfo: " + std::string(gai_strerror(s)) + ")");
+	}
+	std::vector<connection_info> result;
+	for (a = sysaddr; a != nullptr; a = a->ai_next) {
+		connection_info & info = result.emplace_back();
+    	std::memcpy(&(info.endpoint.info.addr), a->ai_addr, a->ai_addrlen);
+		info.protocol = a->ai_protocol;
+		info.sock_type = a->ai_socktype;
+	}
+	result.shrink_to_fit();
+	return result;
+}
+
+void tcp_socket_d::open(const std::vector<connection_info> & infos) {
+	close();
+	for (const connection_info & info : infos) {
+		handle = socket((int)info.endpoint.addr_family(), info.sock_type, info.protocol);
+		if (handle == -1)
+			continue;
+		if (connect(handle, &info.endpoint.info.addr, info.endpoint.addr_len()) != -1) {
+			return;
+		}
+		::close(handle);
+	}
+	throw std::runtime_error("unable to create socket");
 }
 
 std::string tcp_socket_d::name() const noexcept {
@@ -72,9 +113,11 @@ int open_listener(const std::string & address, std::uint16_t port, endpoint_info
 	initial.ai_flags = AI_PASSIVE;
 	std::string port_str = std::to_string(port);
     int handle;
-	if (int s = getaddrinfo(address.c_str(), port_str.c_str(), &initial, &sysaddr)) {
+	finnaly({
 		if (sysaddr != nullptr)
 			freeaddrinfo(sysaddr);
+	});
+	if (int s = getaddrinfo(address.c_str(), port_str.c_str(), &initial, &sysaddr)) {
 		throw std::runtime_error("failed to create listener (getaddrinfo: " + std::string(gai_strerror(s)) + ")");
 	}
 	for (a = sysaddr; a != nullptr; a = a->ai_next) {
@@ -88,12 +131,7 @@ int open_listener(const std::string & address, std::uint16_t port, endpoint_info
 
 	if (a == NULL)
 		throw std::runtime_error("can't find any free socket to bind for \"" + address + ':' + port_str + '"');
-		freeaddrinfo(sysaddr);
     std::memcpy(&(local_info.info.addr), a->ai_addr, a->ai_addrlen);
-    //if (a->ai_family == AF_INET)
-    //    local_info.info.addr_in.sin_port = port;
-    //else
-    //    local_info.info.addr_in6.sin6_port = port;
     return handle;
 }
 

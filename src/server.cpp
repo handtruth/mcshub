@@ -1,10 +1,12 @@
 #include "server.h"
 
-#include "log.h"
-#include "hardcoded.h"
 #include <system_error>
 #include <exception>
 #include <stdexcept>
+
+#include "log.h"
+#include "hardcoded.h"
+#include "settings.h"
 
 namespace mcshub {
 
@@ -12,10 +14,10 @@ class bad_request : public std::runtime_error {
 public:
 	bad_request(const std::string & message) : std::runtime_error(message) {}
 };
-
-client::client(tcp_socket_d && so) : sock(std::move(so)), state(state_enum::handshake), rem(0) {
-	
-}
+//vars_manager<main_vars_t, server_vars, file_vars, pakets::handshake, env_vars_t>
+client::client(tcp_socket_d && so, event & epoll) :
+	poll(epoll), sock(std::move(so)), state(state_enum::handshake), rem(0),
+	vars(main_vars, srv_vars, f_vars, hs, env_vars) {}
 
 void throw_sock_error() {
 	int err = errno;
@@ -73,6 +75,38 @@ int client::handshake(size_t avail) {
 	return s;
 }
 
+std::string client::resolve_status() {
+	std::shared_ptr<const config> c = conf;
+	std::string name = hs.address().c_str();
+	bool allowed = name.size() == hs.address().size();
+	auto iter = c->servers.find(name);
+	if (iter != c->servers.end()) {
+		const config::server_record & record = iter->second;
+		if (record.allowFML) {
+			srv_vars.vars = &record.vars;
+			std::ifstream file(record.status);
+			if (!file) {
+				log->warning("status file '" + record.status + "' not accessible");
+				return vars.resolve(file_content::default_status);
+			}
+			std::string content = std::string((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
+			return vars.resolve(content);
+		}
+	}
+	const config::server_record & record = c->default_server;
+	if (record.allowFML) {
+		srv_vars.vars = &record.vars;
+		std::ifstream file(record.status);
+		if (!file) {
+			log->warning("status file '" + record.status + "' not accessible");
+			return vars.resolve(file_content::default_status);
+		}
+		std::string content = std::string((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
+		return vars.resolve(content);
+	}
+	return "";
+}
+
 int client::status(size_t avail) {
 	std::int32_t size;
 	std::int32_t id;
@@ -85,7 +119,7 @@ int client::status(size_t avail) {
 		if (s == -1) return -1;
 		log->debug("client " + std::string(sock.remote_endpoint()) + " send status request");
 		pakets::response res;
-		res.message() = file_content::default_status; // TODO
+		res.message() = resolve_status(); // TODO
 		size_t outsz = res.size() + 10;
 		outbuff.probe(outsz);
 		int k = res.write(outbuff.data(), outsz);
@@ -109,6 +143,8 @@ int client::status(size_t avail) {
 			throw_sock_error();
 		return s;
 	}
+	default:
+		throw paket_error("unexpected packet id: " + std::to_string(id));
 	}
 }
 
@@ -120,9 +156,12 @@ int client::proxy(size_t avail) {
 	throw bad_request("not implemented yet");
 }
 
-bool client::operator()(descriptor & fd, std::uint32_t events) {
+bool client::operator()(std::uint32_t events) {
 	try {
-		if (events & actions::epoll_in) {
+		if (events & actions::epoll_rdhup) {
+			log->verbose("client " + std::string(sock.remote_endpoint()) + " disconnected");
+			return false;
+		} else if (events & actions::epoll_in) {
 			receive();
 			while (rem > 0) {
 				log->debug("reminder bytes: " + std::to_string(rem));
@@ -134,18 +173,13 @@ bool client::operator()(descriptor & fd, std::uint32_t events) {
 			}
 			return true;
 		}
-		else if (events & actions::epoll_rdhup) {
-			log->verbose("client " + std::string(sock.remote_endpoint()) + " disconnected");
-			return false;
-		}
-	} catch (paket_error & pe) {
-		log->error("pket error from " + std::string(sock.remote_endpoint()));
-		log->error(pe);
 	} catch (std::exception & e) {
 		log->error("processing client " + std::string(sock.remote_endpoint()));
 		log->error(e);
 		return false;
 	}
+	log->debug("everything OK? I guess...");
+	return true;
 }
 
 client::~client() {

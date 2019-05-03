@@ -1,12 +1,18 @@
 #include "mc_pakets.h"
 
-int test() {
-	using namespace mcshub;
-	pakets::handshake hs;
-	hs.address() = "fedefgthgj";
-	const mcshub::size_t sz = 255;
-	byte_t b[sz];
-	int s = hs.write(b, sz);
-	std::to_string(hs);
-	return s;
+namespace mcshub {
+
+std::string pakets::handshake::operator[](const std::string & name) const {
+	if (name == "version")
+		return std::to_string(version());
+	else if (name == "address")
+		return address();
+	else if (name == "port")
+		return std::to_string(port());
+	else if (name == "state")
+		return std::to_string(state());
+	else
+		return "{ NULL }";
+}
+
 }

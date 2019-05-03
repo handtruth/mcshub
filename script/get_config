@@ -34,10 +34,20 @@ case "$1" in
 	NAME) echo "$name";;
 	DEBUG)
 		if [ "$debug" = true ]; then
-			echo "-DDEBUG -g"
+			echo "-DDEBUG -g -rdynamic"
 		else
-			echo ""
+			echo "-O3"
 		fi
+		;;
+	COMP_VERSION)
+		if [ -z "$compiler_version" ]; then
+			echo ""
+		else
+			echo "-$compiler_version"
+		fi
+		;;
+	CC_ARGS)
+		echo $cc_args
 		;;
 	*)
 	;;

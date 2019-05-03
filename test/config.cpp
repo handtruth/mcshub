@@ -10,7 +10,7 @@ void print_record(const mcshub::config::server_record & record) {
     log->info(tab + "port " + to_string(record.port));
     log->info(tab + "status " + record.status);
     log->info(tab + "login " + record.login);
-    log->info(tab + "log " + record.log);
+    log->info(tab + "log " + std::string(record.log));
     string result = tab + "vars: { ";
     for (auto item : record.vars) {
         result += item.first + "=" + item.second + ' ';
@@ -22,6 +22,7 @@ void print_record(const mcshub::config::server_record & record) {
 int main(int argc, char *argv[]) {
     using namespace mcshub;
     using namespace std;
+    config conf;
     conf.load("config.yml");
     stdout_log std_log(log_level::info);
     log = &std_log;
@@ -29,7 +30,7 @@ int main(int argc, char *argv[]) {
     log->info("address " + conf.address);
     log->info("port " + to_string(conf.port));
     log->info("threads " + to_string(conf.threads));
-    log->info("log " + conf.log);
+    log->info("log " + std::string(conf.log));
     log->info("verb " + log_lvl2str(conf.verb));
     log->info("default:");
     print_record(conf.default_server);

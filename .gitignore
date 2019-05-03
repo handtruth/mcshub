@@ -7,4 +7,6 @@
 /src/*.a
 /test/*.test
 /src/hardcoded-m.cpp
+/src/*.ii
+/src/*.s
 config.local

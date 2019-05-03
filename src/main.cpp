@@ -4,19 +4,27 @@
 #include "socket_d.h"
 #include "dns_server.h"
 #include "server.h"
+#include "prog_args.h"
 
 int main(int argc, char *argv[]) {
 	using namespace mcshub;
-	event pull;
+	arguments.parse(argc, (const char **)argv);
+	if (arguments.install) {
+		config::static_install();
+		return 0;
+	}
+	config::initialize();
+	event poll;
+	config::init_listener(poll);
 	stdout_log l(log_level::debug);
 	log = &l;
 	tcp_listener_d listener("0.0.0.0", 25565);
 	log->verbose("start server on " + listener.name());
-	pull.add(listener, [&listener, &pull](descriptor & fd, std::uint32_t events) {
-		client * c = new client(listener.accept());
+	poll.add(listener, [&listener, &poll](descriptor & fd, std::uint32_t events) {
+		client * c = new client(listener.accept(), poll);
 		mcshub::log->verbose("new client: " + std::string(c->socket().remote_endpoint()));
-		pull.add(c->socket(), actions::epoll_in | actions::epoll_rdhup, [c](descriptor & fd, std::uint32_t events) {
-			if (!((*c)(fd, events))) {
+		poll.add(c->socket(), actions::epoll_in | actions::epoll_rdhup, [&poll, c](descriptor & fd, std::uint32_t events) {
+			if (!((*c)(events))) {
 				mcshub::log->verbose("dissconnected: " + std::string(c->socket().remote_endpoint()));
 				delete c;
 			}
@@ -24,7 +32,7 @@ int main(int argc, char *argv[]) {
 	});
 	listener.start();
 	udp_server_d server("0.0.0.0", 25565);
-	pull.add(server, actions::epoll_in, [](descriptor & fd, std::uint32_t events){
+	poll.add(server, actions::epoll_in, [](descriptor & fd, std::uint32_t events){
 		udp_server_d & srv = dynamic_cast<udp_server_d &>(fd);
 		log->debug("GOT UDP DGRAM!!!");
 		byte_t buffer[256];
@@ -35,7 +43,7 @@ int main(int argc, char *argv[]) {
 		srv.write(msg, sizeof(msg), endpoint);
 	});
 	udp_server_d dns("0.0.0.0", 5000);
-	pull.add(dns, actions::epoll_in, [](descriptor & fd, std::uint32_t events){
+	poll.add(dns, actions::epoll_in, [](descriptor & fd, std::uint32_t events){
 		udp_server_d & dns = dynamic_cast<udp_server_d &>(fd);
 		dns_packet packet;
 		byte_t buffer[512];
@@ -54,6 +62,6 @@ int main(int argc, char *argv[]) {
 		int s = packet.write(buffer, 512);
 		dns.write(buffer, s, endpoint);
 	});
-	while (true) pull.read(-1);
+	while (true) poll.pull(-1);
 	return 0;
 }
