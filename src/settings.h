@@ -17,9 +17,9 @@
 namespace mcshub {
 
 struct config {
-	std::string address;
-	std::uint16_t port;
-	unsigned int threads;
+	p<std::string> address;
+	p<std::uint16_t> port;
+	p<unsigned int> threads;
 
 	p<std::string> log;
 	p<log_level> verb;

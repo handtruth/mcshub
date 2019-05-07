@@ -48,6 +48,10 @@ private:
 		fd = ptr;
 	}
 public:
+	struct data_t {
+		virtual ~data_t() {}
+	};
+	data_t * data;
 	watch_t(watch_t && other) : handle(other.handle), file(other.file), mask(other.mask), fd(other.fd) {
 		other.handle = -1;
 		other.fd = nullptr;
@@ -78,15 +82,17 @@ public:
 	private:
 		std::shared_ptr<const watch_t> wfd;
 	public:
-		event_t(const std::shared_ptr<const watch_t> & w, std::uint32_t m) : wfd(w), mask(m) {}
+		event_t(const std::shared_ptr<const watch_t> & w, std::uint32_t m, const char * s) :
+			wfd(w), mask(m), subject(s) {}
 		std::uint32_t mask;
+		std::string subject;
 		const watch_t & watch = *wfd;
 	private:
 		friend class inotify_d;
 	};
 	inotify_d();
 	inotify_d(inotify_d && other);
-	const watch_t & add_watch(std::uint32_t mask, const fs::path & path);
+	const watch_t & add_watch(std::uint32_t mask, const fs::path & path, watch_t::data_t * data = nullptr);
 	const watch_t & mod_watch(std::uint32_t mask, const watch_t & watch);
 	const watch_t & mod_watch(std::uint32_t mask, const std::shared_ptr<const watch_t> & watch) {
 		return mod_watch(mask, *watch);

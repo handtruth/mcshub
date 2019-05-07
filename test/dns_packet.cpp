@@ -12,8 +12,8 @@ int main() {
     q.type = dns_packet::record_t::A;
     byte_t b[512];
     int s = q.write(b, 512);
-    std::ofstream file("dns_packet.txt");
-    file.write(reinterpret_cast<const char *>(b), s);
+    //std::ofstream file("dns_packet.txt");
+    //file.write(reinterpret_cast<const char *>(b), s);
     std::cout << "PACKET SIZE: " << s << std::endl;
     return 0;
 }

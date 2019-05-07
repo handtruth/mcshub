@@ -137,7 +137,7 @@ std::vector<std::reference_wrapper<descriptor>> event::pull(int timeout) {
 }
 
 void event::default_action(descriptor & f, std::uint32_t events) {
-	log->debug("Cought event: " + f.name());
+	log_debug("Cought event: " + f.name());
 }
 
 event::~event() {}

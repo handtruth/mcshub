@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     stdout_log std_log(log_level::info);
     log = &std_log;
 
-    log->info("address " + conf.address);
+    log->info("address " + std::string(conf.address));
     log->info("port " + to_string(conf.port));
     log->info("threads " + to_string(conf.threads));
     log->info("log " + std::string(conf.log));

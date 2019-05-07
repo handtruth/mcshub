@@ -30,15 +30,19 @@ void insert_uuid_part(char result[], const byte_t bytes[], size_t count) {
 
 uuid::operator std::string() const {
 	char result[36]{};
-	//xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx
+	//[xxxxxxxx]-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx
 	insert_uuid_part(result, bytes, 4);
 	result[8] = '-';
+	//xxxxxxxx-[xxxx]-Mxxx-Nxxx-xxxxxxxxxxxx
 	insert_uuid_part(result + 9, bytes + 4, 2);
 	result[13] = '-';
+	//xxxxxxxx-xxxx-[Mxxx]-Nxxx-xxxxxxxxxxxx
 	insert_uuid_part(result + 14, bytes + 6, 2);
 	result[18] = '-';
+	//xxxxxxxx-xxxx-Mxxx-[Nxxx]-xxxxxxxxxxxx
 	insert_uuid_part(result + 19, bytes + 8, 2);
 	result[23] = '-';
+	//xxxxxxxx-xxxx-Mxxx-Nxxx-[xxxxxxxxxxxx]
 	insert_uuid_part(result + 24, bytes + 10, 6);
 	return std::string(result, 36);
 }

@@ -16,7 +16,7 @@ int main() {
 	pakets::handshake hs;
 	hs.address() = "nowhere.com";
 	hs.port() = 25555;
-	vars_manager man = make_vars_manager(main_vars(), env_vars, hs);
+	vars_manager man = make_vars_manager(main_vars, env_vars, hs);
 	std::string c1 = man.resolve("lol ${ hs:port } kek");
 	assert_equals("lol 25555 kek", c1);
 	std::string c2 = man.resolve("kek $hs:address.lol");
@@ -24,7 +24,7 @@ int main() {
 	std::string c3 = man.resolve("zero $$moro");
 	assert_equals("zero $moro", c3);
 	std::string c4 = man.resolve("lava $$$hs:port${hs:state}${}$ ${   hs:address} $");
-	assert_equals("lava $255550{NULL}$ nowhere.com $", c4);
+	assert_equals("lava $255550{ NULL }$ nowhere.com $", c4);
 	std::string c5 = man.resolve("kaka $uuid makaka");
 	log->debug(c5);
 	srand(65443);

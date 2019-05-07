@@ -3,6 +3,8 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 
+#include "log.h"
+
 namespace mcshub {
 
 watch_t::~watch_t() {
@@ -27,7 +29,7 @@ inotify_d::inotify_d(inotify_d && other) : event_member_base(static_cast<inotify
 		pair.second->fd = this;
 }
 
-const watch_t & inotify_d::add_watch(std::uint32_t mask, const fs::path & path) {
+const watch_t & inotify_d::add_watch(std::uint32_t mask, const fs::path & path, watch_t::data_t * data) {
 	fs::path canonical = fs::weakly_canonical(path);
 	int h = inotify_add_watch(handle, canonical.c_str(), mask);
 	if (h < 0)
@@ -35,6 +37,7 @@ const watch_t & inotify_d::add_watch(std::uint32_t mask, const fs::path & path) 
 			"failed to add watcher to inotify in mcshub::inotify_d::add_watch (path is \""
 				+ std::string(canonical) + "\", watch mask " + std::to_string(mask) + ")");
 	std::shared_ptr<watch_t> watch = std::make_shared<watch_t>(watch_t(h, canonical, mask, this));
+	watch->data = data;
 	watchers[h] = watch;
 	return *watch;
 }
@@ -94,16 +97,14 @@ std::vector<inotify_d::event_t> inotify_d::read() {
 	ssize_t i = 0;
 	while (i < length) {
 		inotify_event *event = reinterpret_cast<inotify_event *>(buffer + i);
-		if (event->len) {
-			std::shared_ptr<const watch_t> watch;
-			for (const auto & pair : watchers) {
-				if (pair.first == event->wd)
-					watch = pair.second;
-			}
-			if (watch == nullptr)
-				throw std::runtime_error("inotify watcher isn't present in set (mcshub::inotify_d::read)");
-			result.emplace_back(watch, event->mask);
+		std::shared_ptr<const watch_t> watch;
+		for (const auto & pair : watchers) {
+			if (pair.first == event->wd)
+				watch = pair.second;
 		}
+		if (watch == nullptr)
+			throw std::runtime_error("inotify watcher isn't present in set");
+		result.emplace_back(watch, event->mask, event->name);
 		i += sizeof(inotify_event) + event->len;
 	}
 	return result;

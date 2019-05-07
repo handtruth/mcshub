@@ -48,7 +48,7 @@ std::vector<connection_info> connection_info::resolve(const std::string & addres
 	});
 
 	if (int s = getaddrinfo(address.c_str(), port.c_str(), &initial, &sysaddr)) {
-		throw std::runtime_error("failed to resolve socket address (getaddrinfo: " + std::string(gai_strerror(s)) + ")");
+		throw std::runtime_error("failed to resolve socket address \"" + address + ':' + port + "\" (getaddrinfo: " + std::string(gai_strerror(s)) + ")");
 	}
 	std::vector<connection_info> result;
 	for (a = sysaddr; a != nullptr; a = a->ai_next) {
@@ -68,6 +68,7 @@ void tcp_socket_d::open(const std::vector<connection_info> & infos) {
 		if (handle == -1)
 			continue;
 		if (connect(handle, &info.endpoint.info.addr, info.endpoint.addr_len()) != -1) {
+			remote_info = info.endpoint;
 			return;
 		}
 		::close(handle);

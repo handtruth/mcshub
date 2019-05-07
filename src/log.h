@@ -27,7 +27,7 @@ public:
 	void set_log_level(log_level level) noexcept {
 		lvl = level;
 	}
-	log_level get_log_level() const noexcept {
+	log_level log_lvl() const noexcept {
 		return lvl;
 	}
 	void fatal(const std::string & message) {
@@ -100,5 +100,29 @@ public:
 extern log_base * log;
 
 } // mcshub
+
+#define log_something(lvl, subject) \
+		do { \
+			if (int(::mcshub::log_level::lvl) <= int(::mcshub::log->log_lvl())) \
+				::mcshub::log->lvl(subject); \
+		} while (0)
+
+#define log_fatal(subject) \
+		log_something(fatal, subject)
+
+#define log_error(subject) \
+		log_something(error, subject)
+
+#define log_warning(subject) \
+		log_something(warning, subject)
+
+#define log_info(subject) \
+		log_something(info, subject)
+
+#define log_verbose(subject) \
+		log_something(verbose, subject)
+
+#define log_debug(subject) \
+		log_something(debug, subject)
 
 #endif // _MCSHUB_LOG_HEAD
