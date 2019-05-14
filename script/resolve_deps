@@ -6,8 +6,8 @@ if [ -f "config.local" ]; then
 	. config.local
 fi
 
-mkdir deps
-cd deps
+mkdir dep
+cd dep
 if [ ! -z "$compiler_version" ]; then
 	compiler_version="-$compiler_version"
 fi

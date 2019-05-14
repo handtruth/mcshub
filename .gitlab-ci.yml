@@ -17,7 +17,7 @@ BuildX86_64:
 BuildArmhf:
   stage: build
   script:
-    - echo 'prefix=arm-linux-gnueabihf-'
+    - echo 'prefix=arm-linux-gnueabihf-' > config.local
     - make
   tags: ["default"]
 
@@ -30,4 +30,4 @@ TestX86_64:
 
 cache:
   paths:
-    - deps
+    - dep

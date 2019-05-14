@@ -7,19 +7,19 @@ debug=false
 name=mcshub
 
 # Compiler prefix
-prefix="x86_64-linux-gnu-"
+prefix=""
 
 # Link type
 link="static"
 
 # Include dirs
 includes=(
-    "`pwd`/deps/${prefix}yaml-cpp/include"
+    "`pwd`/dep/${prefix}yaml-cpp/include"
 )
 
 # Additional lib pathes
 lib_path=(
-    "`pwd`/deps/${prefix}yaml-cpp/lib"
+    "`pwd`/dep/${prefix}yaml-cpp/lib"
 )
 
 # Dependencies (shouldn't be modified)
