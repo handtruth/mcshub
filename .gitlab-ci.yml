@@ -1,0 +1,32 @@
+image: reg.handtruth.com/ktlo/mcshub/build-tools
+
+stages:
+  - build
+  - test
+  - package
+  - docker
+  - deploy
+
+BuildX86_64:
+  stage: build
+  script:
+    - echo 'prefix=x86_64-linux-gnu-' > config.local
+    - make
+  tags: ["default"]
+
+BuildArmhf:
+  stage: build
+  script:
+    - echo 'prefix=arm-linux-gnueabihf-'
+    - make
+  tags: ["default"]
+
+TestX86_64:
+  stage: test
+  script:
+    - echo 'prefix=x86_64-linux-gnu-' > config.local
+    - make tests
+  tags: ["default"]
+
+cache:
+  - deps

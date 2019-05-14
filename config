@@ -7,18 +7,25 @@ debug=false
 name=mcshub
 
 # Compiler prefix
-prefix=""
+prefix="x86_64-linux-gnu-"
 
 # Link type
 link="static"
 
 # Include dirs
-includes=()
+includes=(
+    "`pwd`/deps/${prefix}yaml-cpp/include"
+)
 
 # Additional lib pathes
-lib_path=()
+lib_path=(
+    "`pwd`/deps/${prefix}yaml-cpp/lib"
+)
 
 # Dependencies (shouldn't be modified)
 lib=(
     "stdc++fs" "yaml-cpp" "pthread"
 )
+
+# yaml-cpp version
+yaml_cpp_version=0.6.2

@@ -104,8 +104,8 @@ void config::initialize() {
 			fs::path conf = file.path()/arguments.confname;
 			if (fs::exists(conf) && fs::is_regular_file(conf)) {
 				// load sub conf
-				log_info("init distributed configuration for \"" + name + "\"");
 				if (c->distributed) {
+					log_info("init distributed configuration for \"" + name + "\"");
 					auto node = YAML::LoadFile(conf);
 					auto iter = servers.find(name);
 					if (iter != servers.end()) {
@@ -296,6 +296,8 @@ void operator>>(const YAML::Node & node, config::server_record & record) {
 		record.login = login.as<std::string>();
 	if (auto log = node["log"])
 		record.log = log.as<std::string>();
+	if (auto allowFML = node["fml"])
+		record.allowFML = allowFML.as<bool>();
 	for (auto item : node["vars"]) {
 		record.vars[item.first.as<std::string>()] = item.second.as<std::string>();
 	}

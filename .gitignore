@@ -9,4 +9,5 @@
 /src/hardcoded-m.cpp
 /src/*.ii
 /src/*.s
+/deps/
 config.local

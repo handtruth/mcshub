@@ -9,8 +9,10 @@ export COMP_VERSION=$(shell script/get_config COMP_VERSION)
 export USER_CC_ARGS=$(shell script/get_config CC_ARGS)
 export TESTS
 
-build:
+build: deps
 	make -C src build
+deps:
+	script/resolve_deps
 tools:
 	make -C src tools
 

@@ -217,11 +217,10 @@ const config::server_record & client::record(const std::shared_ptr<const config>
 		const config::server_record & r = iter->second;
 		if (allowed || r.allowFML)
 			return r;
-	} else {
-		const config::server_record & r = conf->default_server;
-		if (allowed || r.allowFML)
-			return r;
 	}
+	const config::server_record & r = conf->default_server;
+	if (allowed || r.allowFML)
+		return r;
 	throw bad_request("modded client is forbidden");
 }
 
