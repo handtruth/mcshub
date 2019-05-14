@@ -10,21 +10,21 @@ stages:
 BuildX86_64:
   stage: build
   script:
-    - echo 'prefix=x86_64-linux-gnu-' > config.local
+    - sed -i '1s/^/prefix=x86_64-linux-gnu- /' config
     - make
   tags: ["default"]
 
 BuildArmhf:
   stage: build
   script:
-    - echo 'prefix=arm-linux-gnueabihf-' > config.local
+    - sed -i '1s/^/prefix=arm-linux-gnueabihf- /' config
     - make
   tags: ["default"]
 
 TestX86_64:
   stage: test
   script:
-    - echo 'prefix=x86_64-linux-gnu-' > config.local
+    - sed -i '1s/^/prefix=x86_64-linux-gnu- /' config
     - make tests
   tags: ["default"]
 
