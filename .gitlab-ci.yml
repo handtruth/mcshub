@@ -1,4 +1,4 @@
-image: reg.handtruth.com/ktlo/mcshub/build-tools
+image: reg.handtruth.com/ktlo/mcshub/build-tools:gcc-8
 
 stages:
   - build
