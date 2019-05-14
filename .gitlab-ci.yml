@@ -29,4 +29,5 @@ TestX86_64:
   tags: ["default"]
 
 cache:
-  - deps
+  paths:
+    - deps
