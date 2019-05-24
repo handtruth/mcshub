@@ -2,6 +2,7 @@
 
 #include "socket_d.h"
 #include "mc_pakets.h"
+#include <thread>
 
 const int space_size = 20000;
 
@@ -29,6 +30,9 @@ int main() {
 	sock.write(space, s);
 
 	pakets::response resp;
+
+	using namespace std::chrono_literals;
+	std::this_thread::sleep_for(2s);
 
 	s = sock.read(space, space_size);
 	log_info("read: " + std::to_string(s));
