@@ -13,6 +13,10 @@ BuildX86_64:
     - sed -i '1s/^/prefix=x86_64-linux-gnu- /' config
     - make
   tags: ["default"]
+  artifacts:
+    paths:
+      - out/mcshub
+    expire_in: 1 week
 
 BuildArmhf:
   stage: build
@@ -20,6 +24,10 @@ BuildArmhf:
     - sed -i '1s/^/prefix=arm-linux-gnueabihf- /' config
     - make
   tags: ["default"]
+  artifacts:
+    paths:
+      - out/mcshub
+    expire_in: 1 week
 
 TestX86_64:
   stage: test
