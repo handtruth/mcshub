@@ -33,7 +33,7 @@ TestX86_64:
   stage: test
   script:
     - ./configure --target="x86_64-linux-gnu" --gcc-version=8 --debug
-    - make tests
+    - make test
   tags: ["default"]
 
 cache:
