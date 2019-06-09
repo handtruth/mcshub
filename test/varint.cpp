@@ -19,9 +19,9 @@ int main() {
     assert_equals(2, read_varint(data, N, value));
     assert_equals(200, value);
 
-    assert_equals(1, size_varint(25));
-    assert_equals(2, size_varint(200));
-    assert_equals(5, size_varint(std::numeric_limits<std::int32_t>::max()));
+    assert_equals(mcshub::size_t(1), size_varint(25));
+    assert_equals(mcshub::size_t(2), size_varint(200));
+    assert_equals(mcshub::size_t(5), size_varint(std::numeric_limits<std::int32_t>::max()));
 
     return 0;
 }

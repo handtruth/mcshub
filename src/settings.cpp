@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <algorithm>
 
-#include "hardcoded.h"
+#include "resources.h"
 #include "log.h"
 #include "prog_args.h"
 #include "inotify_d.h"
@@ -392,10 +392,10 @@ void config::install() const {
 	if (!fs::exists(arguments.default_srv_dir) && !fs::create_directory(arguments.default_srv_dir))
 		throw std::runtime_error("can't create directory");
 	std::ofstream status_file(arguments.default_srv_dir + '/' + arguments.status);
-	status_file << file_content::default_status;
+	status_file.write(reinterpret_cast<const char *>(res::sample_default_status_json), res::sample_default_status_json_len);
 	status_file.close();
 	std::ofstream login_file(arguments.default_srv_dir + '/' + arguments.login);
-	login_file << file_content::default_login;
+	login_file.write(reinterpret_cast<const char *>(res::sample_default_login_json), res::sample_default_login_json_len);
 	login_file.close();
 	std::ofstream config_file(arguments.confname);
 	YAML::Node node;

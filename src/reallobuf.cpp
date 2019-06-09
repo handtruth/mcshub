@@ -12,7 +12,7 @@ reallobuf::reallobuf(size_t initial) {
 }
 
 reallobuf::reallobuf(const reallobuf & other) {
-	if (sz = other.sz) {
+	if ((sz = other.sz)) {
 		bytes = reinterpret_cast<byte_t *>(std::malloc(sz));
 		std::memcpy(bytes, other.bytes, sz);
 	} else

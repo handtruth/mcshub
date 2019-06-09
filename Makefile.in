@@ -1,0 +1,51 @@
+
+export NAME=mcshub
+
+CPP:=g++
+
+ifdef GCC_VERSION
+    CXX:=$(CXX)-$(GCC_VERSION)
+    CPP:=$(CPP)-$(GCC_VERSION)
+endif
+
+ifdef TARGET
+    CXX:=$(TARGET)-$(CXX)
+    AR:=$(TARGET)-$(AR)
+    CPP:=$(TARGET)-$(CPP)
+endif
+
+ifdef DEBUG
+    CXXFLAGS+=-g -DDEBUG
+else
+    CXXFLAGS+=-O3 -DNDEBUG
+endif
+
+CPP+=-E
+CXXFLAGS+=-std=c++17 -Wall -Wpedantic $(INCLUDE)
+
+export CXX
+export AR
+export CPP
+export TESTS
+export LDFLAGS
+export ARFLAGS
+export LDLIBS:=$(LIBPATH) -lyaml-cpp -lstdc++fs -lpthread $(LDLIBS)
+export CXXFLAGS
+
+ifndef PREFIX
+    PREFIX:=/usr/local
+endif
+
+.PHONY: build
+build:
+	$(MAKE) -C src
+
+.PHONY: test
+test: build
+	$(MAKE) -C test
+
+.PHONY: clean
+clean:
+	$(RM) -r out
+	$(MAKE) -C src clean
+	$(MAKE) -C test clean

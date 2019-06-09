@@ -15,13 +15,13 @@ int main() {
         assert_equals(fs_event.name(), f.name());
         inotify_d & inotify = dynamic_cast<inotify_d &>(f);
         auto whats = inotify.read();
-        assert_equals(1, whats.size());
+        assert_equals(std::size_t(1), whats.size());
         assert_equals(fs::canonical("."), whats[0].watch.path());
         assert_equals(inev::create, inev::create & whats[0].mask);
     });
     fs::create_directory("inotify.d");
     auto ds = pull.pull(1000);
     fs::remove_all("inotify.d");
-    assert_equals(1, ds.size());
+    assert_equals(std::size_t(1), ds.size());
     return 0;
 }

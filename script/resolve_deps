@@ -1,17 +1,10 @@
 #!/bin/bash
 
-. config
-
-if [ -f "config.local" ]; then
-	. config.local
-fi
-
-mkdir dep
+mkdir -p dep
 cd dep
-if [ ! -z "$compiler_version" ]; then
-	compiler_version="-$compiler_version"
+if [ ! -z "$TARGET" ]; then
+	yaml_cpp=${TARGET}-yaml-cpp
 fi
-yaml_cpp=${prefix}yaml-cpp
 if [ -f "$yaml_cpp.dep" ]; then
 	echo "Yaml-cpp is installed, ommiting..."
 else
@@ -22,7 +15,7 @@ else
 	echo "Building yaml-cpp..."
 	mkdir $yaml_cpp/lib
 	cd $yaml_cpp/lib
-	CC="${prefix}gcc${compiler_version}" CXX="${prefix}g++${compiler_version}" cmake ..
+	cmake ..
 	make
 	cd ../..
 	touch "$yaml_cpp.dep"

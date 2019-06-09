@@ -60,7 +60,7 @@ inline void trim_string(const char *& str, size_t & length) {
 
 template <char c>
 int find_char(const char * str, size_t length) {
-	for (int i = 0; i < length; i++) {
+	for (size_t i = 0; i < length; i++) {
 		switch (str[i]) {
 		case '\0':
 			return -1;

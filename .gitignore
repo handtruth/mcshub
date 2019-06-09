@@ -5,9 +5,10 @@
 /src/x86
 /src/*.o
 /src/*.a
+/src/*.d
+/src/resources.r
+/src/resources.h
 /test/*.test
 /src/hardcoded-m.cpp
-/src/*.ii
-/src/*.s
 /dep/
 config.local

@@ -59,11 +59,16 @@ class vars_manager final : public std::tuple<const vars_t &...> {
 public:
 	vars_manager(const vars_t &... vars) : std::tuple<const vars_t &...>(vars...) {}
 
-	std::string resolve(const std::string & content) {
+	inline std::string resolve(const std::string & content) const {
+		return resolve(content.c_str(), content.size());
+	}
+	inline std::string resolve(const unsigned char *str, size_t length) const {
+		return resolve(reinterpret_cast<const char *>(str), length);
+	}
+	std::string resolve(const char *str, size_t length) const {
 		std::vector<std::variant<string_cut, std::string>> result;
-		const char * str = content.c_str();
-		size_t i, j, length;
-		for (i = 0, j = 0, length = content.size(); i < length;) {
+		size_t i, j;
+		for (i = 0, j = 0; i < length;) {
 			if (str[i] == '$') {
 				if (!isvar(str[i + 1]) && str[i + 1] != '{' && str[i + 1] != '$') {
 					i += 1;
@@ -120,7 +125,7 @@ public:
 		return result_string;
 	}
 
-	std::string get_value(const char * str, size_t length) {
+	std::string get_value(const char * str, size_t length) const {
 		trim_string(str, length);
 		int d = find_char<':'>(str, length);
 		if (d < 0) {
@@ -143,7 +148,7 @@ public:
 template <typename ...vars_t>
 vars_manager<vars_t...> make_vars_manager(const vars_t &... vars) {
 	return vars_manager<vars_t...>(vars...);
-};
+}
 
 } // mcshub
 

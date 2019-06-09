@@ -1,0 +1,132 @@
+#!/bin/bash
+
+PROG=$0
+
+function print_usage {
+	cat << EOF
+Usage: $PROG [options]
+
+Options:
+  -h, --help                     display this help message and exit
+  -t, --target TARGET            target platform for MCSHub (GCC compiler prefix)
+  -u, --gcc-version GCC_VERSION  GCC compiler version (at least version 8 required)
+  -p, --prefix PREFIX            program install directory
+  -y, --yaml-cpp YAML_PATH       yaml-cpp library install dir (will be download 
+                                 and build using cmake if not stated)
+EOF
+}
+
+function getValue {
+	local value=`echo "$1" | grep -o "=.*"`
+	if [ -z "$value" ]; then
+		if [ -z "$3" ]; then
+			noVal
+		fi
+		echo "$3"
+		return 1
+	else
+		echo "${value:1}"
+		return 0
+	fi
+}
+
+function die {
+	>&2 echo $@
+	exit -1
+}
+
+TARGET=""
+GCC_VERSION=""
+PREFIX=""
+YAML_PATH=""
+DEBUG=""
+
+while [ $# -gt 0 ]; do
+	OPT=`grep -o -E "^[^=]*" <<< "$1"`
+	case "$1" in
+		-h|--help|--usage )
+			print_usage
+			exit 0
+		;;
+		-t|--target|--target=* )
+			TARGET=$(getValue "$1" target "$2")
+			shift $?
+			if [ "$TARGET" != "x86_64-linux-gnu" ] && [ "$TARGET" != "arm-linux-gnueabihf" ]; then
+				>&2 echo "WARNING: this software was tested only on \"x86_64-linux-gnu\" and \"arm-linux-gnueabihf\" targets"
+			fi
+		;;
+		-u|--gcc-version|--gcc-version=* )
+			GCC_VERSION=$(getValue "$1" gcc-version "$2")
+			shift $?
+		;;
+		-p|--prefix|--prefix=* )
+			PREFIX=$(getValue "$1" prefix "$2")
+			shift $?
+		;;
+		-y|--yaml-cpp|--yaml-cpp=* )
+			YAML_PATH=$(getValue "$1" yaml-cpp "$2")
+			shift $?
+		;;
+		-d|--debug )
+			DEBUG=true ;;
+		*)
+			>&2 echo "Unrecognised option: '$1'"
+			>&2 printUsage
+			exit 2
+		;;
+	esac
+	shift
+done
+
+compiler_cpp=g++
+compiler_c=gcc
+if [ ! -z "$TARGET" ]; then
+	compiler_cpp="$TARGET-$compiler_cpp"
+	compiler_c="$TARGET-$compiler_c"
+fi
+
+if [ ! -z "$GCC_VERSION" ]; then
+	compiler_cpp="$compiler_cpp-$GCC_VERSION"
+	compiler_c="$compiler_c-$GCC_VERSION"
+fi
+
+test ! -z "$(which "$compiler_cpp")" || die "Compiler not found in system environment"
+test ! -z "$(which "xxd")" || die "XXD util not found"
+
+if [ -z "$YAML_PATH" ]; then
+	test ! -z "$(which cmake)" || die "No cmake found for building cpp-yaml dependency"
+	export CXX="$compiler_cpp"
+	export CC="$compiler_c"
+	export TARGET
+	export yaml_cpp_version=0.6.2
+	script/resolve_deps
+	if [ -z "$TARGET" ]; then
+		INCLUDE="-I../dep/yaml-cpp/include"
+	else
+		INCLUDE="-I../dep/$TARGET-yaml-cpp/include"
+	fi
+
+	if [ -z "$TARGET" ]; then
+		LIBPATH="-L../dep/yaml-cpp/lib"
+	else
+		LIBPATH="-L../dep/$TARGET-yaml-cpp/lib"
+	fi
+else
+	INCLUDE="-I$YAML_PATH/include"
+	LIBPATH="-I$YAML_PATH/lib"
+fi
+
+cat > Makefile << EOF
+INCLUDE:=$INCLUDE
+LIBPATH:=$LIBPATH
+TARGET:=$TARGET
+PREFIX:=$PREFIX
+GCC_VERSION:=$GCC_VERSION
+#########################
+EOF
+
+if [ ! -z "$DEBUG" ]; then
+	echo "DEBUG:=$DEBUG" >> Makefile
+fi
+
+cat Makefile.in >> Makefile

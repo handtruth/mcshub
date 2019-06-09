@@ -1,33 +1,27 @@
 
-PROG=g++
-ARCHIVE=ar
+SOURCES:=$(wildcard *.cpp)
+OBJECTS:=${filter-out main.o,${SOURCES:.cpp=.o}} resources.o
+DEPENDS:=${SOURCES:.cpp=.d}
+RESOURC:=${shell find ../res -type f}
 
-COMP=${PREFIX}${PROG}${COMP_VERSION}
-CC_ARGS=-std=c++17 ${INCLUDE} ${DEBUG} ${USER_CC_ARGS} -c
-LIBS_ARGS=${LIB_PATH} ${LIBS}
-# -Wl,-B${LINK_TYPE} ${LIBS} -Wl,-Bdynamic
-LD=${COMP} ${USER_CC_ARGS}
-CC=${COMP} ${CC_ARGS}
-AR=${ARCHIVE} rvs
-
-SOURCES := $(filter-out hardcoded-m.cpp,$(wildcard *.cpp))
-OBJECTS := $(filter-out main.o,$(patsubst %.cpp,%.o,$(SOURCES)))
-
-build: main.o lib${NAME}.a
+../out/$(NAME): main.o lib$(NAME).a
 	mkdir -p ../out
-	${LD} $^ ${LIBS_ARGS} -o ../out/${NAME}
-lib${NAME}.a: $(OBJECTS)
-	${AR} $@ $^
-clean:
-	rm -f *.o *.a *.s *.ii hardcoded-m.cpp
-tools:
-	echo ${CC}
-	echo ${LD}
-	echo ${AR}
-	echo ${LIBS_ARGS}
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o ../out/$(NAME)
+lib$(NAME).a: $(OBJECTS)
+	$(AR) $(ARFLAGS) $@ $^
 
-hardcoded.o: hardcoded.cpp
-	../script/hardcoded .. < $^ > hardcoded-m.cpp
-	${CC} hardcoded-m.cpp -o $@
-%.o: %.cpp
-	${CC} $^
+.PHONY: clean
+clean:
+	$(RM) main.o $(DEPENDS) $(OBJECTS) lib$(NAME).a resources.r
+
+-include $(DEPENDS)
+
+%.d: %.cpp resources.r
+	@$(CPP) $(CXXFLAGS) $< -MM -MT $(@:.d=.o) > $@
+
+resources.h: resources.r
+resources.r: $(RESOURC)
+	../script/resources resources.h > resources.r
+
+resources.o: resources.r
+	$(CXX) -x c++ $(CXXFLAGS) -c $< -o $@

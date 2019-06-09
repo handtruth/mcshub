@@ -65,7 +65,7 @@ size_t size_varint(std::int32_t value) {
 }
 
 int read_varint(const byte_t bytes[], size_t length, std::int32_t & value) {
-	int numRead = 0;
+	size_t numRead = 0;
     byte_t read;
 	value = 0;
     do {
@@ -85,7 +85,7 @@ int read_varint(const byte_t bytes[], size_t length, std::int32_t & value) {
 }
 
 int write_varint(byte_t bytes[], size_t length, std::int32_t value) {
-	int numWrite = 0;
+	size_t numWrite = 0;
 	std::uint32_t uval = value;
 	do {
 		if (numWrite == length)

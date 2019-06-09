@@ -10,7 +10,7 @@ stages:
 BuildX86_64:
   stage: build
   script:
-    - sed -i '1s/^/prefix=x86_64-linux-gnu- /' config
+    - ./configure --target="x86_64-linux-gnu" --gcc-version=8
     - make
   tags: ["default"]
   artifacts:
@@ -21,7 +21,7 @@ BuildX86_64:
 BuildArmhf:
   stage: build
   script:
-    - sed -i '1s/^/prefix=arm-linux-gnueabihf- /' config
+    - ./configure --target="arm-linux-gnueabihf" --gcc-version=8
     - make
   tags: ["default"]
   artifacts:
@@ -32,7 +32,7 @@ BuildArmhf:
 TestX86_64:
   stage: test
   script:
-    - sed -i '1s/^/prefix=x86_64-linux-gnu- /' config
+    - ./configure --target="x86_64-linux-gnu" --gcc-version=8 --debug
     - make tests
   tags: ["default"]
 

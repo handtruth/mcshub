@@ -14,10 +14,10 @@ struct uuid {
 		struct {
 			std::uint64_t most;
 			std::uint64_t least;
-		};
+		} data;
 	};
 	constexpr uuid(std::uint64_t most_bits = 0, std::uint64_t least_bits = 0) :
-		most(most_bits), least(least_bits) {}
+		data { most_bits, least_bits } {}
 	static uuid random() noexcept;
 	operator std::string() const;
 };

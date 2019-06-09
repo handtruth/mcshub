@@ -46,10 +46,11 @@ int dns_packet::question_t::read(const byte_t bytes[], size_t length) {
 	if (length < size())
 		return -1;
 	int i = 0;
+	const signed len = static_cast<signed>(length);
 	char gather[257];
 	while (true) {
 		byte_t byte = bytes[i];
-		if (i + byte>= length)
+		if (i + byte >= len)
 			return -1;
 		if (byte == 0)
 			break;
@@ -192,7 +193,7 @@ int dns_packet::answer_t::read(const byte_t bytes[], size_t length) {
 		return -1;
 	ttl = swp32int(*reinterpret_cast<const std::uint32_t *>(bytes + s));
 	size_t rsize = swp16int(*reinterpret_cast<const std::uint16_t *>(bytes + s + sizeof(std::uint32_t)));
-	int len = s + (sizeof(std::uint32_t) + sizeof(std::uint16_t)) + rsize;
+	size_t len = s + (sizeof(std::uint32_t) + sizeof(std::uint16_t)) + rsize;
 	if (length < len)
 		return -1;
 	if (rdata)
@@ -212,7 +213,7 @@ int dns_packet::answer_t::write(byte_t bytes[], size_t length) const {
 	*reinterpret_cast<std::uint32_t *>(bytes + s) = swp32int(ttl);
 	size_t rsize = rdata->size();
 	*reinterpret_cast<std::uint16_t *>(bytes + s + sizeof(std::uint32_t)) = swp16int(rsize);
-	int len = s + (sizeof(std::uint32_t) + sizeof(std::uint16_t)) + rsize;
+	size_t len = s + (sizeof(std::uint32_t) + sizeof(std::uint16_t)) + rsize;
 	if (length < len)
 		return -1;
 	rdata->write(bytes + s + (sizeof(std::uint32_t) + sizeof(std::uint16_t)), rsize);

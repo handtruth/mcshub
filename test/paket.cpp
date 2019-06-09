@@ -14,7 +14,7 @@ int main() {
         pakets::request rq1;
         int wrq = rq1.write(bytes, sz);
         mcshub::size_t rq_sz = rq1.size() + size_varint(rq1.size()) + size_varint(rq1.id());
-        assert_equals(rq_sz, wrq);
+        assert_equals(rq_sz, mcshub::size_t(wrq));
 ////////////////////////////////////
         pakets::handshake hs1;
         hs1.version() = 64416;
@@ -24,7 +24,7 @@ int main() {
 
         int written = hs1.write(bytes, sz);
         mcshub::size_t hs1_sz = hs1.size() + size_varint(hs1.size()) + size_varint(rq1.id());
-        assert_equals(hs1_sz, written);
+        assert_equals(hs1_sz, mcshub::size_t(written));
         assert(written > 0);
         pakets::handshake hs2;
         int rsz = hs2.read(bytes, sz);

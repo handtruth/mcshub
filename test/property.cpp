@@ -6,7 +6,6 @@ int main() {
     using namespace mcshub;
     p<int> pp = 47;
     bool was_called = false;
-    int lol = 3;
     auto it = pp.listen([&was_called](int old, int new_v) {
         assert_equals(47, old);
         assert_equals(567, new_v);

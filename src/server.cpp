@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #include "log.h"
-#include "hardcoded.h"
+#include "resources.h"
 #include "hosts_db.h"
 #include "busy_state.h"
 #include "putil.h"
@@ -14,7 +14,7 @@ namespace mcshub {
 
 inline void write2sock(tcp_socket_d & sock, const byte_t data[], const size_t amount) {
 	// WARNING: THREAD BLOCKING CODE!!!
-	for (int k = 0; k < amount; k += sock.write(data + k, amount - k));
+	for (size_t k = 0; k < amount; k += sock.write(data + k, amount - k));
 }
 
 class bad_request : public std::runtime_error {
@@ -23,8 +23,8 @@ public:
 };
 
 client::client(tcp_socket_d && so, event & epoll) :
-	poll(epoll), sock(std::move(so)), state(state_enum::handshake), rem(0),
-	vars(main_vars, srv_vars, f_vars, hs, env_vars), bs(false) {}
+	sock(std::move(so)), poll(epoll), rem(0),
+	bs(false), vars(main_vars, srv_vars, f_vars, hs, env_vars), state(state_enum::handshake) {}
 
 void throw_sock_error() {
 	int err = errno;
@@ -188,7 +188,7 @@ std::string client::resolve_status() {
 			log_debug("open status file: " + record.status);
 			if (!file) {
 				log_warning("status file '" + record.status + "' not accessible");
-				return vars.resolve(file_content::default_status);
+				return vars.resolve(res::sample_default_status_json, res::sample_default_status_json_len);
 			}
 			std::string content = std::string((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
 			return vars.resolve(content);
@@ -200,7 +200,7 @@ std::string client::resolve_status() {
 		std::ifstream file(record.status);
 		if (!file) {
 			log_warning("status file '" + record.status + "' not accessible");
-			return vars.resolve(file_content::default_status);
+			return vars.resolve(res::sample_default_status_json, res::sample_default_status_json_len);
 		}
 		std::string content = std::string((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
 		return vars.resolve(content);

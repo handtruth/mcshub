@@ -176,7 +176,7 @@ namespace pakets {
 			int k = read_varint(bytes, length, size);
 			if (k < 0)
 				return -1;
-			if ((size + k) > length)
+			if ((size_t)(size + k) > length)
 				return -1;
 			int s = read_varint(bytes + k, length - k, id);
 			if (s < 0)
