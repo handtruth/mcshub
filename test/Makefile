@@ -11,4 +11,4 @@ clean:
 
 %.test: %.cpp ../src/lib$(NAME).a
 	$(CXX) $(CXXFLAGS) -I../src $< $(LDFLAGS) -L../src -l$(NAME) $(LDLIBS) -o $@
-	$(GDB) ./$@
+	$(DBG) ./$@

@@ -11,4 +11,5 @@
 /test/*.test
 /src/hardcoded-m.cpp
 /dep/
-config.local
+/Makefile
+*.gcno

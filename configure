@@ -13,6 +13,8 @@ Options:
   -p, --prefix PREFIX            program install directory
   -y, --yaml-cpp YAML_PATH       yaml-cpp library install dir (will be download 
                                  and build using cmake if not stated)
+  -f, --cxx-flags CXXFLAGS       additional flags for compiler
+  -c, --coverage                 add code coverage setup with GCOV
 EOF
 }
 
@@ -40,6 +42,8 @@ GCC_VERSION=""
 PREFIX=""
 YAML_PATH=""
 DEBUG=""
+CXXFLAGS=""
+COVERAGE=""
 
 while [ $# -gt 0 ]; do
 	OPT=`grep -o -E "^[^=]*" <<< "$1"`
@@ -69,6 +73,12 @@ while [ $# -gt 0 ]; do
 		;;
 		-d|--debug )
 			DEBUG=true ;;
+		-f|--cxx-flags|--cxx-flags=* )
+			CXXFLAGS=$(getValue "$1" cxx-flags "$2")
+			shift $?
+		;;
+		-c|--coverage )
+			COVERAGE=true ;;
 		*)
 			>&2 echo "Unrecognised option: '$1'"
 			>&2 printUsage
@@ -88,6 +98,17 @@ fi
 if [ ! -z "$GCC_VERSION" ]; then
 	compiler_cpp="$compiler_cpp-$GCC_VERSION"
 	compiler_c="$compiler_c-$GCC_VERSION"
+fi
+
+LDFLAGS=""
+
+if [ ! -z "$COVERAGE" ]; then
+	LDFLAGS="--coverage"
+	if [ -z "$CXXFLAGS" ]; then
+		CXXFLAGS="--coverage -fprofile-arcs -ftest-coverage"
+	else
+		CXXFLAGS="$CXXFLAGS --coverage -fprofile-arcs -ftest-coverage"
+	fi
 fi
 
 test ! -z "$(which "$compiler_cpp")" || die "Compiler not found in system environment"
@@ -122,6 +143,8 @@ LIBPATH:=$LIBPATH
 TARGET:=$TARGET
 PREFIX:=$PREFIX
 GCC_VERSION:=$GCC_VERSION
+CXXFLAGS:=$CXXFLAGS
+LDFLAGS:=$LDFLAGS
 #########################
 EOF
 

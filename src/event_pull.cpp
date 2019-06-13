@@ -22,7 +22,7 @@ void descriptor::close() {
 }
 
 descriptor::~descriptor() {
-	::close(handle);
+	close();
 }
 
 descriptor::operator bool() const {

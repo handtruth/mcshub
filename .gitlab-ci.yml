@@ -1,4 +1,4 @@
-image: reg.handtruth.com/ktlo/mcshub/build-tools:gcc-8
+image: reg.handtruth.com/ktlo/mcshub/build-tools:latest
 
 stages:
   - build
@@ -7,7 +7,7 @@ stages:
   - docker
   - deploy
 
-BuildX86_64:
+Build_X86_64:
   stage: build
   script:
     - ./configure --target="x86_64-linux-gnu" --gcc-version=8
@@ -18,7 +18,7 @@ BuildX86_64:
       - out/mcshub
     expire_in: 1 week
 
-BuildArmhf:
+Build_Armhf:
   stage: build
   script:
     - ./configure --target="arm-linux-gnueabihf" --gcc-version=8
@@ -29,11 +29,18 @@ BuildArmhf:
       - out/mcshub
     expire_in: 1 week
 
-TestX86_64:
+Test_X86_64:
+  stage: test
+  script:
+    - ./configure --target="x86_64-linux-gnu" --gcc-version=8
+    - make test
+  tags: ["default"]
+  
+Memcheck_X86_64:
   stage: test
   script:
     - ./configure --target="x86_64-linux-gnu" --gcc-version=8 --debug
-    - make test
+    - make test DBG="valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes"
   tags: ["default"]
 
 cache:
