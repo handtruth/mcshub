@@ -24,7 +24,7 @@ inotify_d::inotify_d() {
 			"failed to create inotify in mcshub::inotify_d constructor");
 }
 
-inotify_d::inotify_d(inotify_d && other) : event_member_base(static_cast<inotify_d &&>(other)), watchers(std::move(other.watchers)) {
+inotify_d::inotify_d(inotify_d && other) : descriptor(static_cast<inotify_d &&>(other)), watchers(std::move(other.watchers)) {
 	for (auto & pair : watchers)
 		pair.second->fd = this;
 }
@@ -82,7 +82,7 @@ const std::vector<std::shared_ptr<const watch_t>> inotify_d::subs() const noexce
 	return result;
 }
 
-std::string inotify_d::name() const noexcept {
+std::string inotify_d::to_string() const noexcept {
 	return "inotify";
 }
 

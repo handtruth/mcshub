@@ -73,7 +73,7 @@ public:
 	friend class inotify_d;
 };
 
-class inotify_d : public event_member_base {
+class inotify_d : public descriptor {
 private:
 	std::unordered_map<handle_t, std::shared_ptr<watch_t>> watchers;
 	void remove_watch(const std::unordered_map<handle_t, std::shared_ptr<watch_t>>::iterator & iter);
@@ -111,7 +111,7 @@ public:
 	}
 	void remove_watch(const fs::path & path);
 	const std::vector<std::shared_ptr<const watch_t>> subs() const noexcept;
-	virtual std::string name() const noexcept override;
+	virtual std::string to_string() const noexcept override;
 	std::vector<event_t> read();
 	friend class watch_t;
 };

@@ -64,7 +64,7 @@ struct connection_info {
 	}
 };
 
-class tcp_socket_d : public event_member_base {
+class tcp_socket_d : public descriptor {
 private:
 	endpoint_info local_info;
 	endpoint_info remote_info;
@@ -78,41 +78,43 @@ public:
 		handle = -1;
 	}
 	void open(const std::vector<connection_info> & infos);
-	virtual std::string name() const noexcept override;
+	virtual std::string to_string() const noexcept override;
 	const endpoint_info & local_endpoint() const noexcept {
 		return local_info;
 	}
 	const endpoint_info & remote_endpoint() const noexcept {
 		return remote_info;
 	}
-	size_t avail() const;
 	int read(byte_t bytes[], size_t length);
 	int write(const byte_t bytes[], size_t length);
 	virtual ~tcp_socket_d() override;
 	friend class tcp_listener_d;
 };
 
-class tcp_listener_d : public event_member_base {
+class tcp_listener_d : public descriptor {
 private:
 	endpoint_info local_info;
 	int backlog;
 public:
+	tcp_listener_d();
 	tcp_listener_d(const std::string & address, std::uint16_t port, int backlog = 25);
+	void listen(const std::string & address, std::uint16_t port, int backlog = 25);
 	void start();
-	virtual std::string name() const noexcept override;
+	virtual std::string to_string() const noexcept override;
 	const endpoint_info & local_endpoint() const noexcept {
 		return local_info;
 	}
 	tcp_socket_d accept();
+	void set_reusable(bool reuse = true);
 	virtual ~tcp_listener_d() override;
 };
 
-class udp_server_d : public event_member_base {
+class udp_server_d : public descriptor {
 private:
 	endpoint_info local_info;
 public:
 	udp_server_d(const std::string & address, std::uint16_t port);
-	virtual std::string name() const noexcept override;
+	virtual std::string to_string() const noexcept override;
 	int read(byte_t bytes[], size_t length, endpoint_info * remote_endpoint);
 	int write(byte_t bytes[], size_t length, const endpoint_info & remote_endpoint);
 	const endpoint_info & local_endpoint() const noexcept {

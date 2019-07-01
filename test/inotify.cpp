@@ -11,8 +11,8 @@ int main() {
     namespace fs = std::filesystem;
     mcshub::event pull;
     fs_event.add_watch(inev::create, ".");
-    pull.add(fs_event, actions::epoll_in, [](mcshub::descriptor & f, std::uint32_t) {
-        assert_equals(fs_event.name(), f.name());
+    pull.add(fs_event, actions::in, [](mcshub::descriptor & f, std::uint32_t) {
+        assert_equals(fs_event.to_string(), f.to_string());
         inotify_d & inotify = dynamic_cast<inotify_d &>(f);
         auto whats = inotify.read();
         assert_equals(std::size_t(1), whats.size());

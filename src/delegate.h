@@ -1,8 +1,6 @@
 #ifndef _EVENT_HANDLER
 #define _EVENT_HANDLER
 
-#include <functional>
-
 namespace mcshub {
 
 template <typename F>

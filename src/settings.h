@@ -17,20 +17,25 @@
 namespace mcshub {
 
 struct config {
-	p<std::string> address;
-	p<std::uint16_t> port;
-	p<unsigned int> threads;
+	std::string address;
+	std::uint16_t port;
+	unsigned int threads;
 
 	p<std::string> log;
 	p<log_level> verb;
 
 	bool distributed;
 
+	// Скорее всего не будет
 	struct dns_module {
 		bool use_dns;
 		std::uint32_t ttl;
 		std::vector<std::shared_ptr<dns_packet::answer_t::rdata_t>> records;
 	} dns;
+
+	struct mcsman_module {
+		p<std::string> domain;
+	} mcsman;
 
 	struct server_record {
 		std::string address;
@@ -39,7 +44,9 @@ struct config {
 		std::string status;
 		std::string login;
 
+		// Чего-то лишнее походу
 		p<std::string> log;
+
 		bool allowFML;
 
 		std::unordered_map<std::string, std::string> vars;
@@ -55,7 +62,8 @@ struct config {
 	static void static_install();
 };
 
-extern const matomic<std::shared_ptr<const config>> & conf;
+typedef std::shared_ptr<const config> conf_snap;
+extern const matomic<conf_snap> & conf;
 
 class config_exception : public std::exception {
 private:

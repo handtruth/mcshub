@@ -2,7 +2,6 @@
 
 #include <unistd.h>
 #include <netdb.h>
-#include <sys/ioctl.h>
 
 #include <cstring>
 #include <stdexcept>
@@ -76,16 +75,8 @@ void tcp_socket_d::open(const std::vector<connection_info> & infos) {
 	throw std::runtime_error("unable to create socket");
 }
 
-std::string tcp_socket_d::name() const noexcept {
+std::string tcp_socket_d::to_string() const noexcept {
 	return "tcp socket (" + std::string(local_info) + " <-> " + std::string(remote_info) + ")";
-}
-
-size_t tcp_socket_d::avail() const {
-	std::size_t size;
-	if (ioctl(handle, FIONREAD, &size) == -1)
-		throw std::system_error(std::make_error_code(std::errc(errno)),
-            "error while getting available bytes");
-	return size;
 }
 
 int tcp_socket_d::read(byte_t bytes[], size_t length) {
@@ -98,7 +89,7 @@ int tcp_socket_d::read(byte_t bytes[], size_t length) {
 
 int tcp_socket_d::write(const byte_t bytes[], size_t length) {
     int r = ::write(handle, bytes, length);
-    if (r < 0)
+    if (r < 0 && errno != EWOULDBLOCK)
         throw std::system_error(std::make_error_code(std::errc(errno)),
             "failed to write to socket \"" + std::string(remote_info) + "\"");
     return r;
@@ -123,6 +114,9 @@ int open_listener(const std::string & address, std::uint16_t port, endpoint_info
 	}
 	for (a = sysaddr; a != nullptr; a = a->ai_next) {
 		handle = socket(a->ai_family, a->ai_socktype, a->ai_protocol);
+		/* TODO: Сделай нормально, сначала сокет сщздаётся, затем настраивается, затем открывается */
+		int opt = 1;
+		setsockopt(handle, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 		if (handle < 0)
 			continue;
 		if (!bind(handle, a->ai_addr, a->ai_addrlen))
@@ -136,17 +130,27 @@ int open_listener(const std::string & address, std::uint16_t port, endpoint_info
     return handle;
 }
 
+tcp_listener_d::tcp_listener_d() {
+	handle = -1;
+}
+
 tcp_listener_d::tcp_listener_d(const std::string & address, std::uint16_t port, int backlog) {
+	handle = -1;
+	listen(address, port, backlog);
+}
+
+void tcp_listener_d::listen(const std::string & address, std::uint16_t port, int backlog) {
+	close();
 	this->backlog = backlog;
 	handle = open_listener(address, port, local_info, SOCK_STREAM);
 }
 
 void tcp_listener_d::start() {
-	if (listen(handle, backlog) < 0)
+	if (::listen(handle, backlog) < 0)
 		throw std::runtime_error(std::string("failed to start tcp listener: ") + std::strerror(errno));
 }
 
-std::string tcp_listener_d::name() const noexcept {
+std::string tcp_listener_d::to_string() const noexcept {
 	return "tcp listener (" + std::string(local_info) + ')';
 }
 
@@ -178,13 +182,20 @@ tcp_socket_d tcp_listener_d::accept() {
 	return tcp_socket_d(client, local_info, socket_endpoint);
 }
 
+void tcp_listener_d::set_reusable(bool reuse) {
+	int opt = reuse ? 1 : 0;
+	if (setsockopt(handle, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) == -1) {
+		throw std::system_error(std::make_error_code(std::errc(errno)), "can't set SO_REUSEPORT option for tcp listener");
+	}
+}
+
 tcp_listener_d::~tcp_listener_d() {}
 
 udp_server_d::udp_server_d(const std::string & address, std::uint16_t port) {
     handle = open_listener(address, port, local_info, SOCK_DGRAM);
 }
 
-std::string udp_server_d::name() const noexcept {
+std::string udp_server_d::to_string() const noexcept {
     return "udp server (" + std::string(local_info) + ')';
 }
 

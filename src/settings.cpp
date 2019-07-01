@@ -25,6 +25,7 @@ inotify_d fs_watcher;
 
 void operator>>(const YAML::Node & node, config::server_record & record);
 void operator>>(const YAML::Node & node, config::dns_module & dns);
+void operator>>(const YAML::Node & node, config::mcsman_module & mcsman);
 void operator>>(const YAML::Node & node, config & conf);
 void operator<<(YAML::Node & node, const config::server_record & record);
 void operator<<(YAML::Node & node, const config & conf);
@@ -63,7 +64,7 @@ config::server_record conf_record_default() {
 
 std::shared_ptr<config> conf_default() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, 1, std_log, log_level::info, false, { false },
+		"0.0.0.0", arguments.port, 1, std_log, log_level::info, false, { false }, { std::string() },
 		conf_record_default()
 	});
 	return ptr;
@@ -71,15 +72,15 @@ std::shared_ptr<config> conf_default() {
 
 std::shared_ptr<config> conf_install() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, 1, std_log, log_level::info, false, { false },
+		"0.0.0.0", arguments.port, 1, std_log, log_level::info, false, { false }, { std::string() },
 		{ "", arguments.default_port, cdir/arguments.default_srv_dir/arguments.status,
 			cdir/arguments.default_srv_dir/arguments.login, main_log, true }
 	});
 	return ptr;
 }
 
-matomic<std::shared_ptr<const config>> conf_instance;
-const matomic<std::shared_ptr<const config>> & conf = conf_instance;
+matomic<conf_snap> conf_instance;
+const matomic<conf_snap> & conf = conf_instance;
 
 void config::initialize() {
 	auto c = conf_default();
@@ -314,6 +315,11 @@ void operator>>(const YAML::Node & node, config::dns_module & dns) {
 	}
 }
 
+void operator>>(const YAML::Node & node, config::mcsman_module & mcsman) {
+	if (auto domain = node["domain"])
+		mcsman.domain = domain.as<std::string>();
+}
+
 void operator>>(const YAML::Node & node, config & conf) {
 	if (auto address = node["address"])
 		conf.address = address.as<std::string>();
@@ -334,6 +340,8 @@ void operator>>(const YAML::Node & node, config & conf) {
 		conf.distributed = distributed.as<bool>();
 	if (auto dns = node["dns"])
 		dns >> conf.dns;
+	if (auto mcsman = node["mcsman"])
+		mcsman >> conf.mcsman;
 	if (auto default_server = node["default"]) {
 		if (!default_server.IsMap())
 			throw config_exception("default", "not a map yaml structure");

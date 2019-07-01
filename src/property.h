@@ -5,7 +5,7 @@
 #include <memory>
 #include <iterator>
 
-#include "event_handler.h"
+#include "delegate.h"
 
 namespace mcshub {
 
