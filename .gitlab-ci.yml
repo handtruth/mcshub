@@ -1,4 +1,4 @@
-image: reg.handtruth.com/ktlo/mcshub/build-tools:latest
+image: reg.handtruth.com/mc/mcshub/build-tools:latest
 
 stages:
   - build
