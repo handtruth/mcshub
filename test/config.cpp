@@ -10,7 +10,6 @@ void print_record(const mcshub::config::server_record & record) {
     log->info(tab + "port " + to_string(record.port));
     log->info(tab + "status " + record.status);
     log->info(tab + "login " + record.login);
-    log->info(tab + "log " + std::string(record.log));
     string result = tab + "vars: { ";
     for (auto item : record.vars) {
         result += item.first + "=" + item.second + ' ';
