@@ -1,6 +1,6 @@
 [
-  {
-    "text": "Server ${hs:address}:${hs:port} doesn't exist!",
-    "color": "red"
-  }
+ {
+  "text": "Server ${hs:address} doesn't exist!",
+  "color": "red"
+ }
 ]

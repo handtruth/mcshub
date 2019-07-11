@@ -97,15 +97,17 @@ std::vector<inotify_d::event_t> inotify_d::read() {
 	ssize_t i = 0;
 	while (i < length) {
 		inotify_event *event = reinterpret_cast<inotify_event *>(buffer + i);
-		std::shared_ptr<const watch_t> watch;
+		std::shared_ptr<watch_t> watch;
 		for (const auto & pair : watchers) {
 			if (pair.first == event->wd)
 				watch = pair.second;
 		}
 		if (watch == nullptr)
-			throw std::runtime_error("inotify watcher isn't present in set");
-		result.emplace_back(watch, event->mask, event->name);
-		i += sizeof(inotify_event) + event->len;
+			log_debug("inotify watcher isn't present in set: " + std::string(event->name));
+		else {
+			result.emplace_back(watch, event->mask, event->name);
+			i += sizeof(inotify_event) + event->len;
+		}
 	}
 	return result;
 }

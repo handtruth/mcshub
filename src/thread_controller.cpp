@@ -25,7 +25,7 @@ void worker_events::redo_write_attempt() {
 
 worker::worker() {
 	working = true;
-	conf_snap c = conf;
+	conf_snap c;
 	listener.listen(c->address, c->port);
 	//listener.set_reusable();
 	listener.start();
@@ -37,18 +37,24 @@ worker::worker() {
 	poll.add(events, in | out | et, [this](descriptor & fd, std::uint32_t events) {
 		on_event(fd, events);
 	});
-	task = std::async(std::launch::async, [this](){ job(); });
+	task = std::async(std::launch::async, [this]() { job(); });
 }
 
 void worker::on_accept(descriptor &, std::uint32_t) {
-	auto & client = clients.emplace_front(listener.accept(), *this);
-	client.set_me(clients.begin());
-	log_verbose("new client " + std::string(client.client_socket().remote_endpoint()));
+	auto & client = clients.emplace_front(listener.accept(), poll);
+	log_verbose("new client " + std::string(client.sock().remote_endpoint()));
 	using namespace actions;
-	auto & sock = client.client_socket();
+	auto & sock = client.sock();
 	sock.set_non_block();
-	poll.add(sock, in | out | et | err | rdhup, [this, &client](descriptor & fd, std::uint32_t events) {
-		client.on_client_sock(fd, events);
+	const auto & it = clients.cbegin();
+	std::hash<std::thread::id> hasher;
+	log_debug("client " + std::string(sock.remote_endpoint()) + " is on thread #" + std::to_string(hasher(std::this_thread::get_id())));
+	poll.add(sock, in | out | et | err | rdhup, [this, &client, it](descriptor & fd, std::uint32_t events) {
+		client.on_from_event(events);
+		if (client.is_disconnected()) {
+			log_verbose("client " + std::string(client.sock().remote_endpoint()) + " disconnected");
+			clients.erase(it);
+		}
 	});
 }
 
@@ -61,16 +67,10 @@ void worker::on_event(descriptor &, std::uint32_t e) {
 					break;
 				case worker_events::event_t::stop:
 					working = false;
-					for (client & c : clients) {
-						c.terminate();
+					for (portal & c : clients) {
+						c.on_disconnect();
 					}
 					break;
-				case worker_events::event_t::remove: {
-					auto & iter = dynamic_cast<worker_events::remove &>(*event).item;
-					log_debug("remove client from list: " + std::string(iter->client_socket().remote_endpoint()));
-					clients.erase(dynamic_cast<worker_events::remove &>(*event).item);
-					break;
-				}
 				default:
 					throw std::runtime_error("undefined worker event type");
 			}
@@ -82,9 +82,11 @@ void worker::on_event(descriptor &, std::uint32_t e) {
 }
 
 void worker::job() {
-	log_debug("thread started");
+	log_debug("thread spawned");
 	while (working) {
-		poll.pull(-1);
+		try {
+			poll.pull(-1);
+		} catch (...) {}
 	}
 }
 
@@ -93,12 +95,8 @@ std::future<void> & worker::stop() {
 	return task;
 }
 
-void worker::remove(const std::list<client>::iterator & item) {
-	events.write<worker_events::remove>(item);
-}
-
 thread_controller::thread_controller() {
-	conf_snap c = conf;
+	conf_snap c;
 	workers = std::vector<worker>(c->threads);
 }
 

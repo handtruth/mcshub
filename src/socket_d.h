@@ -1,9 +1,14 @@
 #ifndef _SOCKET_D_HEAD
 #define _SOCKET_D_HEAD
 
-#include "event_pull.h"
+#include <vector>
+#include <system_error>
+
 #include <sys/socket.h>
 #include <arpa/inet.h>
+
+#include "descriptor.h"
+#include "primitives.h"
 
 namespace mcshub {
 
@@ -77,7 +82,8 @@ public:
 	tcp_socket_d() {
 		handle = -1;
 	}
-	void open(const std::vector<connection_info> & infos);
+	void open(const std::vector<connection_info> & infos, bool async = false);
+	std::errc ensure_connected();
 	virtual std::string to_string() const noexcept override;
 	const endpoint_info & local_endpoint() const noexcept {
 		return local_info;
@@ -85,6 +91,7 @@ public:
 	const endpoint_info & remote_endpoint() const noexcept {
 		return remote_info;
 	}
+	std::errc last_error();
 	int read(byte_t bytes[], size_t length);
 	int write(const byte_t bytes[], size_t length);
 	virtual ~tcp_socket_d() override;

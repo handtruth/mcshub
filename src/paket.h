@@ -58,7 +58,7 @@ namespace fields {
 			return static_size();
 		}
 		int read(const byte_t bytes[], size_t length) {
-			if (length <= static_size())
+			if (length < static_size())
 				return -1;
 			field<T>::value = *(reinterpret_cast<const typename field<T>::value_type *>(bytes));
 			return static_size();

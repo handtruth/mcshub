@@ -13,3 +13,4 @@
 /dep/
 /Makefile
 *.gcno
+/start

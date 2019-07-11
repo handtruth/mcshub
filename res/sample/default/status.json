@@ -1,7 +1,7 @@
 {
  "version": {
-  "name": "not exists",
-  "protocol": 3
+  "name": "MCSHub",
+  "protocol": -1
  },
  "players": {
   "max": 0,
@@ -9,7 +9,7 @@
   "sample": []
  },
  "description": {
-  "text": "Server ${hs:address}:${hs:port} doesn't exists!",
+  "text": "Server ${hs:address} doesn't exists!",
   "color": "red"
  }
 }

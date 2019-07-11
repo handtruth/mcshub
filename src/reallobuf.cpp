@@ -42,6 +42,7 @@ void reallobuf::move(size_t i) {
 
 reallobuf::~reallobuf() {
 	free(bytes);
+	bytes = nullptr;
 }
 
 }

@@ -20,9 +20,10 @@ struct config {
 	std::string address;
 	std::uint16_t port;
 	unsigned int threads;
+	int max_packet_size;
 
-	p<std::string> log;
-	p<log_level> verb;
+	std::string log;
+	log_level verb;
 
 	bool distributed;
 
@@ -33,9 +34,7 @@ struct config {
 		std::vector<std::shared_ptr<dns_packet::answer_t::rdata_t>> records;
 	} dns;
 
-	struct mcsman_module {
-		p<std::string> domain;
-	} mcsman;
+	std::string domain;
 
 	struct server_record {
 		std::string address;
@@ -44,10 +43,9 @@ struct config {
 		std::string status;
 		std::string login;
 
-		// Чего-то лишнее походу
-		p<std::string> log;
-
 		bool allowFML;
+
+		bool mcsman;
 
 		std::unordered_map<std::string, std::string> vars;
 		std::vector<std::shared_ptr<dns_packet::answer_t::rdata_t>> dns;
@@ -62,8 +60,21 @@ struct config {
 	static void static_install();
 };
 
-typedef std::shared_ptr<const config> conf_snap;
-extern const matomic<conf_snap> & conf;
+extern const matomic<std::shared_ptr<const config>> & conf;
+
+class conf_snap {
+	std::shared_ptr<const config> snap = conf;
+public:
+	operator const std::shared_ptr<const config>() & noexcept {
+		return snap;
+	}
+	const config & operator*() const noexcept {
+		return *snap;
+	}
+	const config * operator->() const noexcept {
+		return &*snap;
+	}
+};
 
 class config_exception : public std::exception {
 private:

@@ -1,8 +1,11 @@
+#include <iostream>
+
 #include "settings.h"
 #include "log.h"
-#include <iostream>
 #include "prog_args.h"
 #include "thread_controller.h"
+#include "signal_d.h"
+#include "event_pull.h"
 
 int main(int argc, char *argv[]) {
 	using namespace mcshub;
@@ -20,32 +23,33 @@ int main(int argc, char *argv[]) {
 		log->set_log_level(c->verb);
 	else
 		log = new file_log(c->log, c->verb);
-	c->verb.listen([](log_level oldv, log_level newv) {
-		log->set_log_level(newv);
-	});
-	c->log.listen([&](const std::string & oldv, const std::string & newv) {
-		if (oldv != newv) {
-			if (newv == "$std") {
-				l.set_log_level(log->log_lvl());
-				delete log;
-				log = &l;
-			} else {
-				log_level lvl = log->log_lvl();
-				try {
-					dynamic_cast<stdout_log *>(log);
-					log = new file_log(newv, lvl);
-				} catch (...) {
-					delete log;
-					log = new file_log(newv, lvl);
-				}
-			}
-		}
-	});
+	signal_d signal { sig::abort, sig::broken_pipe, sig::termination, sig::segmentation_fail };
 	event poll;
 	config::init_listener(poll);
 	log_verbose("start server on " + c->address + ':' + std::to_string(c->port));
 	c.reset();
 	thread_controller controller;
+	poll.add(signal, [&signal, &controller](descriptor &, std::uint32_t) {
+		switch (signal.read()) {
+			case sig::abort:
+				log_fatal("abort signal received, a part of the MCSHub was destroyed");
+				return;
+			case sig::segmentation_fail:
+				// Very bad...
+				log_fatal("segmentation fail");
+				return;
+			case sig::broken_pipe:
+				return;
+			case sig::termination:
+				log_info("terminating MCSHub instance...");
+				controller.terminate();
+				log_info("successfuly stoped MCSHub");
+				std::terminate();
+				return;
+			default:
+				return;
+		}
+	});
 	while (true) poll.pull(-1);
 	return 0;
 }

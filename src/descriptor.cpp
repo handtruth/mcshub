@@ -9,17 +9,18 @@
 namespace mcshub {
 
 void descriptor::set_non_block(bool nonblock) {
-	int flags = fcntl(handle, F_GETFD);
+	int flags = fcntl(handle, F_GETFL);
 	if (flags == -1) {
-		throw std::system_error(std::error_code(errno, std::system_category()), "error while getting flags of fd");
+		throw std::system_error(std::make_error_code(std::errc(errno)), "error while getting flags of fd");
 	}
 	if (nonblock)
 		flags |= O_NONBLOCK;
 	else
 		flags &= ~O_NONBLOCK;
-	flags = fcntl(handle, F_SETFD, flags);
+	flags = fcntl(handle, F_SETFL, flags);
 	if (flags == -1) {
-		throw std::system_error(std::error_code(errno, std::system_category()), "error while setting non blocking state to fd");
+		throw std::system_error(std::make_error_code(std::errc(errno)),
+			"error while setting non blocking state to fd");
 	}
 }
 

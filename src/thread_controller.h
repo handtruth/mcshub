@@ -10,7 +10,7 @@
 
 #include "event_pull.h"
 #include "primitives.h"
-#include "server.h"
+#include "client.h"
 #include "socket_d.h"
 #include "event_d.h"
 
@@ -38,13 +38,6 @@ public:
 			return event_t::noop;
 		}
 	};
-	struct remove final : public event {
-		virtual event_t type() const noexcept override {
-			return event_t::remove;
-		}
-		std::list<client>::iterator item;
-		remove(const std::list<client>::iterator & iter) : item(iter) {}
-	};
 	inline std::unique_ptr<event> read() {
 		std::unique_ptr<event> result;
 		if (avail())
@@ -68,7 +61,7 @@ class worker final {
 	std::future<void> task;
 	tcp_listener_d listener;
 	worker_events events;
-	std::list<client> clients;
+	std::list<portal> clients;
 	std::atomic<bool> working;
 	void on_accept(descriptor &, std::uint32_t);
 	void on_event(descriptor &, std::uint32_t e);
@@ -77,7 +70,6 @@ public:
 	event poll;
 	worker();
 	std::future<void> & stop();
-	void remove(const std::list<client>::iterator & item);
 };
 
 struct thread_controller final {

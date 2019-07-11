@@ -16,12 +16,14 @@ const std::string & log_lvl2str(log_level lvl) {
 }
 
 void log_base::write_private(log_level level, const std::string & message) {
+	std::lock_guard<std::mutex> lock(mutex);
 	if ((int)level > (int)lvl)
 		return;
 	write("[" + lvl_strs[(int)level] + "]:" + ' ' + message);
 }
 
 void log_base::write_exception(log_level level, const std::exception & exception) {
+	std::lock_guard<std::mutex> lock(mutex);
 	if ((int)level > (int)lvl)
 		return;
 	write("[" + lvl_strs[(int)level] + "]:" + ' ' + typeid(exception).name() + ": " + exception.what());

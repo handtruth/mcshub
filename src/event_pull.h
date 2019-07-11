@@ -52,7 +52,7 @@ public:
 	}
 	void remove(descriptor & fd);
 	virtual std::string to_string() const noexcept override;
-	std::vector<std::reference_wrapper<descriptor>> pull(int timeout = 0);
+	void pull(int timeout = 0);
 	virtual ~event() override;
 };
 

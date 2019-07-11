@@ -5,7 +5,6 @@
 
 #include <cstring>
 #include <stdexcept>
-#include <system_error>
 
 #include "putil.h"
 
@@ -60,13 +59,13 @@ std::vector<connection_info> connection_info::resolve(const std::string & addres
 	return result;
 }
 
-void tcp_socket_d::open(const std::vector<connection_info> & infos) {
+void tcp_socket_d::open(const std::vector<connection_info> & infos, bool async) {
 	close();
 	for (const connection_info & info : infos) {
-		handle = socket((int)info.endpoint.addr_family(), info.sock_type, info.protocol);
+		handle = socket((int)info.endpoint.addr_family(), info.sock_type | (async ? SOCK_NONBLOCK : 0), info.protocol);
 		if (handle == -1)
 			continue;
-		if (connect(handle, &info.endpoint.info.addr, info.endpoint.addr_len()) != -1) {
+		if (connect(handle, &info.endpoint.info.addr, info.endpoint.addr_len()) != -1 || errno == EINPROGRESS) {
 			remote_info = info.endpoint;
 			return;
 		}
@@ -75,13 +74,28 @@ void tcp_socket_d::open(const std::vector<connection_info> & infos) {
 	throw std::runtime_error("unable to create socket");
 }
 
+std::errc tcp_socket_d::ensure_connected() {
+	socklen_t len = sizeof(struct sockaddr_in6);
+	if (getpeername(handle, &local_info.info.addr, &len) == -1)
+		return std::errc(errno);
+	return std::errc(0);
+}
+
 std::string tcp_socket_d::to_string() const noexcept {
 	return "tcp socket (" + std::string(local_info) + " <-> " + std::string(remote_info) + ")";
 }
 
+std::errc tcp_socket_d::last_error() {
+	int err;
+	socklen_t sz = sizeof(err);
+	if (getsockopt(handle, SOL_SOCKET, SO_ERROR, &err, &sz) == -1)
+		return std::errc(errno);
+	return std::errc(err);
+}
+
 int tcp_socket_d::read(byte_t bytes[], size_t length) {
     int r=recv(handle, bytes, length, 0);
-    if (r < 0)
+    if (r < 0 && errno != EWOULDBLOCK)
         throw std::system_error(std::make_error_code(std::errc(errno)),
             "failed to read from socket \"" + std::string(remote_info) + "\"");
     return r;

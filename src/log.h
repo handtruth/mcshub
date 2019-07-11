@@ -6,6 +6,7 @@
 #include <string>
 #include <exception>
 #include <fstream>
+#include <mutex>
 
 namespace mcshub {
 
@@ -18,6 +19,7 @@ const std::string & log_lvl2str(log_level lvl);
 class log_base {
 private:
 	log_level lvl;
+	std::mutex mutex;
 	void write_private(log_level level, const std::string & message);
 	void write_exception(log_level level, const std::exception & exception);
 protected:

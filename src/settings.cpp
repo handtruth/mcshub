@@ -6,6 +6,8 @@
 #include <unordered_set>
 #include <algorithm>
 
+#include <sys/sysinfo.h>
+
 #include "resources.h"
 #include "log.h"
 #include "prog_args.h"
@@ -17,7 +19,6 @@ namespace fs = std::filesystem;
 namespace mcshub {
 
 const char * std_log = "$std";
-const char * main_log = "$main";
 
 const fs::path cdir = ".";
 
@@ -25,10 +26,7 @@ inotify_d fs_watcher;
 
 void operator>>(const YAML::Node & node, config::server_record & record);
 void operator>>(const YAML::Node & node, config::dns_module & dns);
-void operator>>(const YAML::Node & node, config::mcsman_module & mcsman);
 void operator>>(const YAML::Node & node, config & conf);
-void operator<<(YAML::Node & node, const config::server_record & record);
-void operator<<(YAML::Node & node, const config & conf);
 
 enum class file_category {
 	main_conf, main_dir, srv_conf, srv_dir
@@ -59,12 +57,12 @@ struct srv_dir_wt : public watch_data {
 } srv_dir;
 
 config::server_record conf_record_default() {
-	return { "", arguments.default_port, "", "", main_log, true };
+	return { "", arguments.default_port, "", "", true, false };
 }
 
 std::shared_ptr<config> conf_default() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, 1, std_log, log_level::info, false, { false }, { std::string() },
+		"0.0.0.0", arguments.port, unsigned(get_nprocs()), 6000, std_log, log_level::info, false, { false }, std::string(),
 		conf_record_default()
 	});
 	return ptr;
@@ -72,36 +70,33 @@ std::shared_ptr<config> conf_default() {
 
 std::shared_ptr<config> conf_install() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, 1, std_log, log_level::info, false, { false }, { std::string() },
+		"0.0.0.0", arguments.port, 1, 6000, std_log, log_level::info, false, { false }, { std::string() },
 		{ "", arguments.default_port, cdir/arguments.default_srv_dir/arguments.status,
-			cdir/arguments.default_srv_dir/arguments.login, main_log, true }
+			cdir/arguments.default_srv_dir/arguments.login, true }
 	});
 	return ptr;
 }
 
-matomic<conf_snap> conf_instance;
-const matomic<conf_snap> & conf = conf_instance;
+matomic<std::shared_ptr<const config>> conf_instance;
+const matomic<std::shared_ptr<const config>> & conf = conf_instance;
 
-void config::initialize() {
-	auto c = conf_default();
+void load_all_conf(const std::shared_ptr<config> & c, bool add_watch = false) {
 	c->load(arguments.confname);
-	conf_instance = c;
-	fs_watcher.add_watch(inev::close_write | inev::delete_self, arguments.confname, &main_conf);
-	fs_watcher.add_watch(inev::create | inev::in_delete, cdir, &main_dir);
 	// load configurations for all sub directories
 	for (const auto & file : fs::directory_iterator(cdir)) {
 		if (file.is_directory()) {
 			auto & servers = c->servers;
 			std::string name = file.path().filename();
-			if (arguments.mcsman) {
+			if (arguments.mcsman && name != "default") {
 				// load mcsman settings first
 				log_info("init mcsman configuration for \"" + name + "\"");
 				servers[name] = config::server_record {
-					name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, main_log, false,
+					name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
 					{ { "name", name } }
 				};
 			}
-			fs_watcher.add_watch(inev::create | inev::delete_self, file.path(), &srv_dir);
+			if (add_watch)
+				fs_watcher.add_watch(inev::create | inev::moved_to | inev::delete_self | inev::move_self, file.path(), &srv_dir);
 			fs::path conf = file.path()/arguments.confname;
 			if (fs::exists(conf) && fs::is_regular_file(conf)) {
 				// load sub conf
@@ -117,10 +112,19 @@ void config::initialize() {
 						servers[name] = record;
 					}
 				}
-				fs_watcher.add_watch(inev::close_write | inev::delete_self, conf, &srv_conf);
+				if (add_watch)
+					fs_watcher.add_watch(inev::close_write | inev::delete_self | inev::move_self, conf, &srv_conf);
 			}
 		}
 	}
+}
+
+void config::initialize() {
+	fs_watcher.add_watch(inev::close_write | inev::delete_self | inev::move_self, arguments.confname, &main_conf);
+	fs_watcher.add_watch(inev::create | inev::moved_to | inev::in_delete, cdir, &main_dir);
+	auto c = conf_default();
+	load_all_conf(c, true);
+	conf_instance = c;
 }
 
 void config::init_listener(event & poll) {
@@ -128,48 +132,50 @@ void config::init_listener(event & poll) {
 		std::vector<inotify_d::event_t> events = fs_watcher.read();
 		std::shared_ptr<const config> old_conf = conf;
 		std::shared_ptr<config> new_conf = std::make_shared<config>(*old_conf);
-		for (const inotify_d::event_t & event : events) {
-			// 1: main_conf { close_write, delete_self }
-			// 2: main_dir { create(srv_dir, main_conf), delete }
-			// 3: srv_conf { delete_self, close_write }
-			// 4: srv_dir { create(srv_conf), delete_self }
+		for (auto iter = events.rbegin(); iter != events.rend(); iter++) {
+			auto event = *iter;
+			// 1: main_conf { close_write, delete_self | move_self }
+			// 2: main_dir { create | moved_to (srv_dir, main_conf), delete | moved_from }
+			// 3: srv_conf { delete_self | move_self, close_write }
+			// 4: srv_dir { create | moved_to (srv_conf), delete_self | move_self }
 			if (event.watch.data == &main_conf) {
 				// 1: main_conf
 				if (event.mask & inev::close_write) {
 					// main_conf: close_write
 					try {
-						auto node = YAML::LoadFile(arguments.confname);
-						node >> *new_conf;
+						// Unfortunately, it is required to reload everything :(
+						new_conf = conf_default();
+						load_all_conf(new_conf);
 					} catch (const YAML::Exception & yaml_e) {
 						log_error("main configuration file has problems");
 						log_error(yaml_e);
 					}
 					log_info("reloaded main configuration");
 				}
-				if (event.mask & inev::delete_self) {
+				if (event.mask & inev::delete_self || event.mask & inev::move_self) {
 					// main conf: delete_self
 					log_error("main config file was deleted");
 					fs_watcher.remove_watch(event.watch);
 				}
 			} else if (event.watch.data == &main_dir) {
 				// 2: main_dir
-				if (event.mask & inev::create) {
+				if (event.mask & inev::create || event.mask & inev::moved_to) {
 					// main_dir: create
 					const std::string & name = event.subject;
 					if (fs::is_directory(name)) {
-						// create(srv_dir)
-						if (arguments.mcsman) {
+						// create | moved_to (srv_dir)
+						if (arguments.mcsman && name != "default") {
 							// add mcsman auto-record
 							log_info("added new mcsman server configuration \"" + name + "\"");
 							new_conf->servers[name] = config::server_record {
-								name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, main_log, false,
+								name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
 								{ { "name", name } }
 							};
 						}
-						fs_watcher.add_watch(inev::delete_self | inev::create, cdir/name, &srv_dir);
+						fs_watcher.add_watch(inev::delete_self | inev::move_self | inev::create | inev::moved_to, cdir/name, &srv_dir);
 					}
 					if (name == arguments.confname) {
-						// create(main_conf)
+						// create | moved_to (main_conf)
 						try {
 							auto node = YAML::LoadFile(arguments.confname);
 							node >> *new_conf;
@@ -177,24 +183,24 @@ void config::init_listener(event & poll) {
 							log_error("main configuration file \"" + name + "\" has problems");
 							log_error(yaml_e);
 						}
-						fs_watcher.add_watch(inev::delete_self | inev::close_write, arguments.confname, &main_conf);
+						fs_watcher.add_watch(inev::delete_self | inev::move_self | inev::close_write, arguments.confname, &main_conf);
 						log_info("main configuration created again after destroying");
 					}
 				}
-				if (event.mask & inev::in_delete) {
+				if (event.mask & inev::in_delete || event.mask & inev::moved_from) {
 					// main_dir: delete
 				}
 			} else if (event.watch.data == &srv_conf) {
 				// 3: srv_conf
 				std::string name = *(--(--event.watch.path().end()));
-				if (event.mask & inev::delete_self) {
-					// srv_conf: delete_self
+				if (event.mask & inev::delete_self || event.mask & inev::move_self) {
+					// srv_conf: delete_self | move_self
 					new_conf->servers.erase(name);
 					if (old_conf->distributed) {
 						log_verbose("conf for \"" + name + "\" was deleted");
-						if (arguments.mcsman) {
+						if (arguments.mcsman && name != "default") {
 							new_conf->servers[name] = config::server_record {
-								name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, main_log, false,
+								name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
 								{ { "name", name } }
 							};
 							log_verbose("but mcsman conf for \"" + name + "\" was recreated");
@@ -223,13 +229,13 @@ void config::init_listener(event & poll) {
 				}
 			} else if (event.watch.data == &srv_dir) {
 				// 4: srv_dir
-				if (event.mask & inev::create) {
-					// srv_dir: create
+				if (event.mask & inev::create || event.mask & inev::moved_to) {
+					// srv_dir: create | moved_to
 					const fs::path & path = event.watch.path();
 					std::string name = path.filename();
 					fs::path conf_file = cdir/name/arguments.confname;
 					if (arguments.confname == event.subject) {
-						// create(srv_conf)
+						// create | moved_to(srv_conf)
 						if (new_conf->distributed) {
 							try {
 								auto node = YAML::LoadFile(conf_file);
@@ -249,11 +255,11 @@ void config::init_listener(event & poll) {
 							}
 							log_verbose("created configuration for \"" + name + "\"");
 						}
-						fs_watcher.add_watch(inev::delete_self | inev::close_write, conf_file, &srv_conf);
+						fs_watcher.add_watch(inev::delete_self | inev::move_self | inev::close_write, conf_file, &srv_conf);
 					}
 				}
-				if (event.mask & inev::delete_self) {
-					// srv_dir: delete_self
+				if (event.mask & inev::delete_self || event.mask & inev::move_self) {
+					// srv_dir: delete_self | move_self
 					if (arguments.mcsman) {
 						// erase mcsman conf if persists
 						std::string name = event.watch.path().filename();
@@ -295,8 +301,6 @@ void operator>>(const YAML::Node & node, config::server_record & record) {
 		record.status = status.as<std::string>();
 	if (auto login = node["login"])
 		record.login = login.as<std::string>();
-	if (auto log = node["log"])
-		record.log = log.as<std::string>();
 	if (auto allowFML = node["fml"])
 		record.allowFML = allowFML.as<bool>();
 	for (auto item : node["vars"]) {
@@ -315,18 +319,25 @@ void operator>>(const YAML::Node & node, config::dns_module & dns) {
 	}
 }
 
-void operator>>(const YAML::Node & node, config::mcsman_module & mcsman) {
-	if (auto domain = node["domain"])
-		mcsman.domain = domain.as<std::string>();
-}
-
 void operator>>(const YAML::Node & node, config & conf) {
 	if (auto address = node["address"])
 		conf.address = address.as<std::string>();
 	if (auto port = node["port"])
 		conf.port = port.as<std::uint16_t>();
-	if (auto threads = node["threads"])
-		conf.threads = threads.as<unsigned int>();
+	if (auto threads = node["threads"]) {
+		try {
+			conf.threads = threads.as<unsigned int>();
+		} catch (YAML::Exception &) {
+			if (threads.as<std::string>() == "$cpu")
+				conf.threads = get_nprocs();
+		}
+	}
+	if (auto max_packet_size = node["max_packet_size"]) {
+		std::int32_t max_size;
+		conf.max_packet_size = max_size = max_packet_size.as<std::int32_t>();
+		if (max_size < 0)
+			throw config_exception("max_packet_size", "maximum Minecraft packet size is lower than zero");
+	}
 	if (auto log = node["log"])
 		conf.log = log.as<std::string>();
 	if (auto verb = node["verb"]) {
@@ -340,8 +351,25 @@ void operator>>(const YAML::Node & node, config & conf) {
 		conf.distributed = distributed.as<bool>();
 	if (auto dns = node["dns"])
 		dns >> conf.dns;
-	if (auto mcsman = node["mcsman"])
-		mcsman >> conf.mcsman;
+	if (auto domain = node["domain"]) {
+		std::string & name = conf.domain = domain.as<std::string>();
+		if (!name.empty()) {
+			if (name == ".")
+				name = "";
+			else {
+				if (name[0] == '.')
+					throw config_exception("domain", "domain name can't start with '.'");
+				for (std::size_t i = 0, size = name.size(); i < size; i++) {
+					char c = name[i];
+					if (c != '.' && !std::isalnum(c) && c != '_' && c != '-')
+						throw config_exception("domain", "domain name has illegal characters");
+				}
+				if (name[name.size() - 1] == '.')
+					name.pop_back();
+				name = '.' + name;
+			}
+		}
+	}
 	if (auto default_server = node["default"]) {
 		if (!default_server.IsMap())
 			throw config_exception("default", "not a map yaml structure");
@@ -355,34 +383,6 @@ void operator>>(const YAML::Node & node, config & conf) {
 			record.second >> server;
 			conf.servers[record.first.as<std::string>()] = server;
 		}
-	}
-}
-
-void operator<<(YAML::Node & node, const config::server_record & record) {
-	node["address"] = record.address;
-	node["port"] = record.port;
-	node["status"] = record.status;
-	node["login"] = record.login;
-	node["log"] = (const std::string &)(record.log);
-
-	auto vars = node["vars"];
-	for (auto var : record.vars)
-		vars[var.first] = var.second;
-}
-
-void operator<<(YAML::Node & node, const config & conf) {
-	node["address"] = (const std::string &)(conf.address);
-	node["port"] = std::uint16_t(conf.port);
-	node["threads"] = unsigned(conf.threads);
-	node["log"] = std::string(conf.log);
-	node["verb"] = log_lvl2str(conf.verb);
-	auto default_server = node["default"];
-	default_server << conf.default_server;
-
-	auto servers = node["servers"];
-	for (auto server : conf.servers) {
-		auto record = node[server.first];
-		record << server.second;
 	}
 }
 
@@ -406,9 +406,7 @@ void config::install() const {
 	login_file.write(reinterpret_cast<const char *>(res::sample_default_login_json), res::sample_default_login_json_len);
 	login_file.close();
 	std::ofstream config_file(arguments.confname);
-	YAML::Node node;
-	node << *this;
-	config_file << "# MCSHub configuration file" << std::endl << node;
+	config_file.write(reinterpret_cast<const char *>(res::sample_mcshub_yml), res::sample_mcshub_yml_len);
 	config_file.close();
 }
 

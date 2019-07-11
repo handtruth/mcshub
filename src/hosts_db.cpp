@@ -15,9 +15,9 @@ void connect(tcp_socket_d & socket, const std::string & hostname, std::uint16_t 
 	if (iter == hosts_db.end()) {
 		log_verbose("new dns request for '" + hostname + "'");
 		const auto & addresses = hosts_db[name] = std::move(connection_info::resolve(name, port));
-		socket.open(addresses);
+		socket.open(addresses, true);
 	} else {
-		socket.open(iter->second);
+		socket.open(iter->second, true);
 	}
 }
 
