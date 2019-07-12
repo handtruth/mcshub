@@ -5,7 +5,7 @@ cd dep
 if [ ! -z "$TARGET" ]; then
 	yaml_cpp=${TARGET}-yaml-cpp
 else
-	yaml-cpp=yaml-cpp
+	yaml_cpp=yaml-cpp
 fi
 if [ -f "$yaml_cpp.dep" ]; then
 	echo "Yaml-cpp is installed, ommiting..."
