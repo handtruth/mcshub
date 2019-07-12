@@ -10,7 +10,7 @@ Build_Alpine:
   stage: build
   image: reg.handtruth.com/mc/mcshub/build-alpine:latest
   script:
-    - ./configure --target="x86_64-alpine-linux-musl"
+    - ./configure
     - make
   tags: ["default"]
   artifacts:
