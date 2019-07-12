@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 				log_info("terminating MCSHub instance...");
 				controller.terminate();
 				log_info("successfuly stoped MCSHub");
-				std::terminate();
+				std::exit(EXIT_SUCCESS);
 				return;
 			default:
 				return;

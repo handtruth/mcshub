@@ -399,15 +399,17 @@ void config::load(const std::string & path) {
 void config::install() const {
 	if (!fs::exists(arguments.default_srv_dir) && !fs::create_directory(arguments.default_srv_dir))
 		throw std::runtime_error("can't create directory");
-	std::ofstream status_file(arguments.default_srv_dir + '/' + arguments.status);
-	status_file.write(reinterpret_cast<const char *>(res::sample_default_status_json), res::sample_default_status_json_len);
-	status_file.close();
-	std::ofstream login_file(arguments.default_srv_dir + '/' + arguments.login);
-	login_file.write(reinterpret_cast<const char *>(res::sample_default_login_json), res::sample_default_login_json_len);
-	login_file.close();
-	std::ofstream config_file(arguments.confname);
-	config_file.write(reinterpret_cast<const char *>(res::sample_mcshub_yml), res::sample_mcshub_yml_len);
-	config_file.close();
+	if (!fs::exists(arguments.confname)) {
+		std::ofstream status_file(arguments.default_srv_dir + '/' + arguments.status);
+		status_file.write(reinterpret_cast<const char *>(res::sample_default_status_json), res::sample_default_status_json_len);
+		status_file.close();
+		std::ofstream login_file(arguments.default_srv_dir + '/' + arguments.login);
+		login_file.write(reinterpret_cast<const char *>(res::sample_default_login_json), res::sample_default_login_json_len);
+		login_file.close();
+		std::ofstream config_file(arguments.confname);
+		config_file.write(reinterpret_cast<const char *>(res::sample_mcshub_yml), res::sample_mcshub_yml_len);
+		config_file.close();
+	}
 }
 
 void config::static_install() {

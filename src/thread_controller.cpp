@@ -6,23 +6,6 @@
 
 namespace mcshub {
 
-worker_events::event::~event() {}
-
-void worker_events::redo_write_attempt() {
-	if (fifo.empty())
-		return;
-	try {
-		event * ev = fifo.front();
-		event_d::write(std::uint64_t(ev));
-		fifo.pop_front();
-	} catch (const std::system_error & e) {
-		if (e.code().value() == int(std::errc::operation_would_block)) {
-			log_fatal("event manager is not expected to be used between threads, unexpected situation");
-		}
-		throw;
-	}
-}
-
 worker::worker() {
 	working = true;
 	conf_snap c;
@@ -61,23 +44,19 @@ void worker::on_accept(descriptor &, std::uint32_t) {
 void worker::on_event(descriptor &, std::uint32_t e) {
 	log_debug("worker event occurs");
 	if (e & actions::in) {
-		while (auto event = events.read()) {
-			switch (event->type()) {
-				case worker_events::event_t::noop:
-					break;
-				case worker_events::event_t::stop:
-					working = false;
-					for (portal & c : clients) {
-						c.on_disconnect();
-					}
-					break;
-				default:
-					throw std::runtime_error("undefined worker event type");
-			}
+		switch (events.read()) {
+			case worker_events::event_t::noop:
+				break;
+			case worker_events::event_t::stop:
+				working = false;
+				log_debug("disconnecting clients...");
+				for (portal & c : clients) {
+					c.on_disconnect();
+				}
+				break;
+			default:
+				throw std::runtime_error("undefined worker event type");
 		}
-	}
-	if (e & actions::out) {
-		events.redo_write_attempt();
 	}
 }
 
@@ -91,7 +70,7 @@ void worker::job() {
 }
 
 std::future<void> & worker::stop() {
-	events.write<worker_events::stop>();
+	events.write(worker_events::event_t::stop);
 	return task;
 }
 

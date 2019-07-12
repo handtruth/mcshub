@@ -21,40 +21,13 @@ public:
 	enum class event_t {
 		noop, stop, remove
 	};
-	struct event {
-		virtual event_t type() const noexcept = 0;
-		virtual ~event();
-	};
-private:
-	std::deque<event *> fifo;
-public:
-	struct noop final : public event {
-		virtual event_t type() const noexcept override {
-			return event_t::noop;
-		}
-	};
-	struct stop final : public event {
-		virtual event_t type() const noexcept override {
-			return event_t::noop;
-		}
-	};
-	inline std::unique_ptr<event> read() {
-		std::unique_ptr<event> result;
-		if (avail())
-			result.reset((event *)event_d::read());
-		return result;
+	inline event_t read() {
+		return (event_t)event_d::read();
 	}
-	template <typename E, typename ...Args>
-	inline void write(Args... value) {
-		event * ev = new E(value...);
-		if (avail()) {
-			log_warning("queue formed for special events, maybe server is overloaded");
-			fifo.emplace_back(ev);
-		} else {
-			event_d::write(std::uint64_t(ev));
-		}
+	inline void write(event_t ev) {
+		event_d::write(std::uint64_t(ev));
 	}
-	void redo_write_attempt();
+	worker_events() : event_d(std::int32_t(event_t::noop)) {}
 };
 
 class worker final {

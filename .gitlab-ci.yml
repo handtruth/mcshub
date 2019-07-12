@@ -4,7 +4,6 @@ stages:
   - build
   - test
   - package
-  - docker
   - deploy
 
 Build_X86_64:
@@ -29,12 +28,25 @@ Build_Armhf:
       - out/mcshub
     expire_in: 1 week
 
+Build_Alpine:
+  stage: build
+  image: reg.handtruth.com/mc/mcshub/build-alpine:latest
+  script:
+    - ./configure --target="x86_64-alpine-linux-musl" --gcc-version=8
+    - make
+  tags: ["default"]
+  artifacts:
+    paths:
+      - out/mcshub
+    expire_in: 1 week
+
 Test_X86_64:
   stage: test
   script:
     - ./configure --target="x86_64-linux-gnu" --gcc-version=8
     - make test
   tags: ["default"]
+  dependencies: []
   
 Memcheck_X86_64:
   stage: test
@@ -42,6 +54,27 @@ Memcheck_X86_64:
     - ./configure --target="x86_64-linux-gnu" --gcc-version=8 --debug
     - make test DBG="valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes"
   tags: ["default"]
+  dependencies: []
+
+AlpineDockerImage:
+  stage: package
+  image: docker:stable
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-alpine
+  services:
+    - docker:dind
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $IMAGE_TAG -f Dockerfile.alpine .
+    - docker push $IMAGE_TAG
+    - docker rmi $IMAGE_TAG
+  tags: ["docker"]
+  only:
+    - master
+    - release
+  dependencies:
+    - Build_Alpine
 
 cache:
   paths:

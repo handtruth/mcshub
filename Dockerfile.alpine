@@ -1,0 +1,7 @@
+FROM alpine:latest
+ADD out/mcshub /usr/local/bin/mcshub
+RUN [ "mkdir", "/mcshub" ]
+WORKDIR /mcshub
+RUN [ "mcshub", "--install" ]
+EXPOSE 25565/tcp
+ENTRYPOINT [ "mcshub" ]
