@@ -51,7 +51,7 @@ Test_X86_64:
 Memcheck_X86_64:
   stage: test
   script:
-    - ./configure --target="x86_64-linux-gnu" --gcc-version=8 --debug
+    - ./configure --target="x86_64-linux-gnu" --debug
     - make test DBG="valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes"
   tags: ["default"]
   dependencies: []
