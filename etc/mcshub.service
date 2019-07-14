@@ -1,0 +1,15 @@
+[Unit]
+Description=Minecraft Server Hub
+After=syslog.target
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/etc/mcshub
+
+ExecStart=/usr/local/bin/mcshub
+TimeoutSec=300
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

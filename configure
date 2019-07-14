@@ -10,7 +10,6 @@ Options:
   -h, --help                     display this help message and exit
   -t, --target TARGET            target platform for MCSHub (GCC compiler prefix)
   -u, --gcc-version GCC_VERSION  GCC compiler version (at least version 8 required)
-  -p, --prefix PREFIX            program install directory
   -y, --yaml-cpp YAML_PATH       yaml-cpp library install dir (will be download 
                                  and build using cmake if not stated)
   -f, --cxx-flags CXXFLAGS       additional flags for compiler
@@ -39,7 +38,7 @@ function die {
 
 TARGET=""
 GCC_VERSION=""
-PREFIX=""
+PREFIX="/usr"
 YAML_PATH=""
 DEBUG=""
 CXXFLAGS=""

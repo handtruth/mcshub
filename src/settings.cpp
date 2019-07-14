@@ -28,6 +28,8 @@ void operator>>(const YAML::Node & node, config::server_record & record);
 void operator>>(const YAML::Node & node, config::dns_module & dns);
 void operator>>(const YAML::Node & node, config & conf);
 
+void put_main_conf_file();
+
 enum class file_category {
 	main_conf, main_dir, srv_conf, srv_dir
 };
@@ -91,7 +93,7 @@ void load_all_conf(const std::shared_ptr<config> & c, bool add_watch = false) {
 				// load mcsman settings first
 				log_info("init mcsman configuration for \"" + name + "\"");
 				servers[name] = config::server_record {
-					name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
+					name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
 					{ { "name", name } }
 				};
 			}
@@ -120,6 +122,8 @@ void load_all_conf(const std::shared_ptr<config> & c, bool add_watch = false) {
 }
 
 void config::initialize() {
+	if (!fs::exists(arguments.confname))
+		put_main_conf_file();
 	fs_watcher.add_watch(inev::close_write | inev::delete_self | inev::move_self, arguments.confname, &main_conf);
 	fs_watcher.add_watch(inev::create | inev::moved_to | inev::in_delete, cdir, &main_dir);
 	auto c = conf_default();
@@ -168,7 +172,7 @@ void config::init_listener(event & poll) {
 							// add mcsman auto-record
 							log_info("added new mcsman server configuration \"" + name + "\"");
 							new_conf->servers[name] = config::server_record {
-								name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
+								name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
 								{ { "name", name } }
 							};
 						}
@@ -200,7 +204,7 @@ void config::init_listener(event & poll) {
 						log_verbose("conf for \"" + name + "\" was deleted");
 						if (arguments.mcsman && name != "default") {
 							new_conf->servers[name] = config::server_record {
-								name, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
+								name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
 								{ { "name", name } }
 							};
 							log_verbose("but mcsman conf for \"" + name + "\" was recreated");
@@ -396,20 +400,22 @@ void config::load(const std::string & path) {
 	node >> *this;
 }
 
+void put_main_conf_file() {
+	std::ofstream config_file(arguments.confname);
+	config_file.write(reinterpret_cast<const char *>(res::sample_mcshub_yml), res::sample_mcshub_yml_len);
+	config_file.close();
+}
+
 void config::install() const {
 	if (!fs::exists(arguments.default_srv_dir) && !fs::create_directory(arguments.default_srv_dir))
 		throw std::runtime_error("can't create directory");
-	if (!fs::exists(arguments.confname)) {
-		std::ofstream status_file(arguments.default_srv_dir + '/' + arguments.status);
-		status_file.write(reinterpret_cast<const char *>(res::sample_default_status_json), res::sample_default_status_json_len);
-		status_file.close();
-		std::ofstream login_file(arguments.default_srv_dir + '/' + arguments.login);
-		login_file.write(reinterpret_cast<const char *>(res::sample_default_login_json), res::sample_default_login_json_len);
-		login_file.close();
-		std::ofstream config_file(arguments.confname);
-		config_file.write(reinterpret_cast<const char *>(res::sample_mcshub_yml), res::sample_mcshub_yml_len);
-		config_file.close();
-	}
+	std::ofstream status_file(arguments.default_srv_dir + '/' + arguments.status);
+	status_file.write(reinterpret_cast<const char *>(res::sample_default_status_json), res::sample_default_status_json_len);
+	status_file.close();
+	std::ofstream login_file(arguments.default_srv_dir + '/' + arguments.login);
+	login_file.write(reinterpret_cast<const char *>(res::sample_default_login_json), res::sample_default_login_json_len);
+	login_file.close();
+	put_main_conf_file();
 }
 
 void config::static_install() {

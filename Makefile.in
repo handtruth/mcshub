@@ -4,20 +4,20 @@ export NAME=mcshub
 CPP:=g++
 
 ifdef GCC_VERSION
-    CXX:=$(CXX)-$(GCC_VERSION)
-    CPP:=$(CPP)-$(GCC_VERSION)
+	CXX:=$(CXX)-$(GCC_VERSION)
+	CPP:=$(CPP)-$(GCC_VERSION)
 endif
 
 ifdef TARGET
-    CXX:=$(TARGET)-$(CXX)
-    AR:=$(TARGET)-$(AR)
-    CPP:=$(TARGET)-$(CPP)
+	CXX:=$(TARGET)-$(CXX)
+	AR:=$(TARGET)-$(AR)
+	CPP:=$(TARGET)-$(CPP)
 endif
 
 ifdef DEBUG
-    CXXFLAGS+=-g -DDEBUG
+	CXXFLAGS+=-g -DDEBUG
 else
-    CXXFLAGS+=-O3 -DNDEBUG
+	CXXFLAGS+=-O3 -DNDEBUG
 endif
 
 CPP+=-E
@@ -33,8 +33,11 @@ export LDLIBS:=$(LIBPATH) -lyaml-cpp -lstdc++fs -lpthread $(LDLIBS)
 export CXXFLAGS
 
 ifndef PREFIX
-    PREFIX:=/usr/local
+	PREFIX:=/usr/local
 endif
+
+CP=cp
+MKDIR=mkdir
 
 .PHONY: build
 build:
@@ -43,6 +46,24 @@ build:
 .PHONY: test
 test: build
 	$(MAKE) -C test
+
+.PHONY: install
+install: build
+	$(MKDIR) -p $(PREFIX)/bin
+	$(CP) out/mcshub $(PREFIX)/bin/mcshub
+	$(MKDIR) -p /etc/systemd/system
+	$(MKDIR) -p /etc/mcshub
+	$(CP) etc/mcshub.service /etc/systemd/system/mcshub.service
+	systemctl enable mcshub.service
+	cd /etc/mcshub && mcshub --install
+	systemctl start mcshub.service
+
+.PHONY: uninstall
+uninstall:
+	systemctl stop mcshub.service
+	systemctl disable mcshub.service
+	$(RM) /etc/systemd/system/mcshub.service
+	$(RM) $(PREFIX)/bin/mcshub
 
 .PHONY: clean
 clean:

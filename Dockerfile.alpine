@@ -3,5 +3,7 @@ ADD out/mcshub /usr/local/bin/mcshub
 RUN mkdir /mcshub && apk add libstdc++
 WORKDIR /mcshub
 RUN [ "mcshub", "--install" ]
+VOLUME /mcshub
 EXPOSE 25565/tcp
+LABEL maintainer="ktlo@handtruth.com"
 ENTRYPOINT [ "mcshub" ]
