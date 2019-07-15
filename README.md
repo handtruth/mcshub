@@ -1,6 +1,8 @@
 Minecraft Server Hub
 =======================
 
+![MCSHub Logo](other/MCSHub.png)
+
 Description
 -----------------------
 
