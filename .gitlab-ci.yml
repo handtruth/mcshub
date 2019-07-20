@@ -61,7 +61,7 @@ AlpineDockerImage:
   image: docker:stable
   variables:
     DOCKER_HOST: tcp://docker:2375/
-    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+    IMAGE_TAG: $CI_REGISTRY_IMAGE:latest
   services:
     - docker:dind
   script:
@@ -72,7 +72,6 @@ AlpineDockerImage:
   tags: ["docker"]
   only:
     - master
-    - release
   dependencies:
     - Build_Alpine
 
