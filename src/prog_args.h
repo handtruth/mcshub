@@ -13,6 +13,7 @@ public:
 	std::string status = "status.json";
 	std::string login = "login.json";
 	std::string default_srv_dir = "default";
+	std::string domain = "";
 	bool mcsman = false;
 	bool install = false;
 	std::uint16_t port = 25565;

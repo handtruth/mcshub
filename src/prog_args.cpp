@@ -50,6 +50,8 @@ void arguments_t::parse(int argn, const char ** args) {
                 login = get_arg_value(it, end);
             else if (is_arg_name(arg, "default_dir"))
                 default_srv_dir = get_arg_value(it, end);
+            else if (is_arg_name(arg, "domain"))
+                domain = get_arg_value(it, end);
             else if (is_arg_name(arg, "mcsman"))
                 mcsman = true;
             else if (is_arg_name(arg, "install"))
