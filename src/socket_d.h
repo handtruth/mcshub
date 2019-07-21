@@ -61,9 +61,8 @@ struct endpoint_info {
 
 class dns_error : public std::runtime_error {
 public:
-    dns_error() {}
-    dns_error(const std::string & message) : std::runtime_error(message)
-    dns_error(const char * message) : std::runtime_error(message)
+    dns_error(const std::string & message) : std::runtime_error(message) {}
+    dns_error(const char * message) : std::runtime_error(message) {}
 };
 
 struct connection_info {
