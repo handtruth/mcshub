@@ -46,7 +46,7 @@ std::vector<connection_info> connection_info::resolve(const std::string & addres
 	});
 
 	if (int s = getaddrinfo(address.c_str(), port.c_str(), &initial, &sysaddr)) {
-		throw std::runtime_error("failed to resolve socket address \"" + address + ':' + port + "\" (getaddrinfo: " + std::string(gai_strerror(s)) + ")");
+		throw dns_error("failed to resolve socket address \"" + address + ':' + port + "\" (getaddrinfo: " + std::string(gai_strerror(s)) + ")");
 	}
 	std::vector<connection_info> result;
 	for (a = sysaddr; a != nullptr; a = a->ai_next) {

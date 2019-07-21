@@ -2,6 +2,7 @@
 #define _HOSTS_DB_HEAD
 
 #include <cinttypes>
+#include <stdexcept>
 
 #include "socket_d.h"
 

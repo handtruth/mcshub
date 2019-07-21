@@ -167,18 +167,22 @@ void portal::from_handshake() {
 	const auto & r = record(conf);
 	rec = r;
 	if (!r.address.empty() && r.port) {
-		connect(to.sock, r.address, r.port);
-		to_s = state_t::connect;
-		from_s = state_t::wait;
-		log_verbose("attempt to connect to " + r.address + ":" + std::to_string(r.port));
-		using namespace actions;
-		poll.add(to.sock, in | out | rdhup | err | et, [this](descriptor &, std::uint32_t events) {
-			on_to_event(events);
-		});
-	} else {
-		set_from_state_by_hs();
-		process_from_request(); // Вообще это костыль
+		try {
+			connect(to.sock, r.address, r.port);
+			to_s = state_t::connect;
+			from_s = state_t::wait;
+			log_verbose("attempt to connect to " + r.address + ":" + std::to_string(r.port));
+			using namespace actions;
+			poll.add(to.sock, in | out | rdhup | err | et, [this](descriptor &, std::uint32_t events) {
+				on_to_event(events);
+			});
+			return;
+		} catch (const dns_error &) {
+
+		}
 	}
+	set_from_state_by_hs();
+	process_from_request(); // Вообще это костыль
 }
 
 void portal::from_login() {
