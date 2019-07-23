@@ -176,10 +176,9 @@ void portal::from_handshake() {
 			poll.add(to.sock, in | out | rdhup | err | et, [this](descriptor &, std::uint32_t events) {
 				on_to_event(events);
 			});
-			poll.add(timeout, [this](descriptor &, std::uint32_t events) {
-				on_timeout(events);
+			poll.later(std::chrono::milliseconds { conf->timeout }, [this]() {
+				on_timeout();
 			});
-			timeout.delay(std::chrono::milliseconds { conf->timeout });
 			return;
 		} catch (const dns_error &) {
 
@@ -423,19 +422,16 @@ void portal::on_disconnect() {
 	} catch (...) {}
 }
 
-void portal::on_timeout(std::uint32_t events) {
-	if (events & actions::in) {
-		switch (to_s) {
-			case state_t::connect:
-				timeout.read();
-				set_from_state_by_hs();
-				to.sock.close();
-				log_debug("connection timeout #" + std::to_string(id));
-				process_from_request();
-				return;
-			default:
-				return;
-		}
+void portal::on_timeout() {
+	switch (to_s) {
+		case state_t::connect:
+			set_from_state_by_hs();
+			to.sock.close();
+			log_debug("connection timeout #" + std::to_string(id));
+			process_from_request();
+			return;
+		default:
+			return;
 	}
 }
 

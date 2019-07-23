@@ -17,7 +17,7 @@ else
 	echo "Building yaml-cpp..."
 	mkdir $yaml_cpp/lib
 	cd $yaml_cpp/lib
-	cmake ..
+	cmake -DYAML_CPP_BUILD_TESTS=OFF ..
 	make
 	cd ../..
 	touch "$yaml_cpp.dep"

@@ -64,7 +64,6 @@ public:
 
 class portal {
 	static std::atomic<long> globl_id;
-	timer_d timeout;
 	std::string nickname;
 	long id;
 	gate from, to;
@@ -107,7 +106,7 @@ public:
 	void on_to_event(std::uint32_t events);
 	void on_disconnect();
 private:
-	void on_timeout(std::uint32_t events);
+	void on_timeout();
 };
 
 template <typename P>

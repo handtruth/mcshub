@@ -64,7 +64,7 @@ config::server_record conf_record_default() {
 
 std::shared_ptr<config> conf_default() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, unsigned(get_nprocs()), 6000, 3000, std_log, log_level::info, false, { false }, arguments.domain,
+		"0.0.0.0", arguments.port, unsigned(get_nprocs()), 6000, 500, std_log, log_level::info, false, { false }, arguments.domain,
 		conf_record_default()
 	});
 	return ptr;
@@ -72,7 +72,7 @@ std::shared_ptr<config> conf_default() {
 
 std::shared_ptr<config> conf_install() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, 1, 6000, 3000, std_log, log_level::info, false, { false }, arguments.domain,
+		"0.0.0.0", arguments.port, 1, 6000, 500, std_log, log_level::info, false, { false }, arguments.domain,
 		{ "", arguments.default_port, cdir/arguments.default_srv_dir/arguments.status,
 			cdir/arguments.default_srv_dir/arguments.login, true }
 	});
