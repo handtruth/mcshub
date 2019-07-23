@@ -11,6 +11,7 @@
 #include "settings.h"
 #include "mc_pakets.h"
 #include "response_props.h"
+#include "timer_d.h"
 
 namespace mcshub {
 
@@ -63,6 +64,7 @@ public:
 
 class portal {
 	static std::atomic<long> globl_id;
+	timer_d timeout;
 	std::string nickname;
 	long id;
 	gate from, to;
@@ -104,6 +106,8 @@ public:
 	void on_from_event(std::uint32_t events);
 	void on_to_event(std::uint32_t events);
 	void on_disconnect();
+private:
+	void on_timeout(std::uint32_t events);
 };
 
 template <typename P>

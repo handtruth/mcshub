@@ -17,6 +17,9 @@
 ## from client (dynamic)
 #max_packet_size: 6000
 
+## Maximum time waiting connection to background server
+#timeout: 3000
+
 ## Specify filename for log output
 #log: $std
 

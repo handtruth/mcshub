@@ -176,6 +176,10 @@ void portal::from_handshake() {
 			poll.add(to.sock, in | out | rdhup | err | et, [this](descriptor &, std::uint32_t events) {
 				on_to_event(events);
 			});
+			poll.add(timeout, [this](descriptor &, std::uint32_t events) {
+				on_timeout(events);
+			});
+			timeout.delay(std::chrono::milliseconds { conf->timeout });
 			return;
 		} catch (const dns_error &) {
 
@@ -357,7 +361,7 @@ void portal::on_to_event(std::uint32_t events) {
 		if (events & actions::out) {
 			switch (to_s) {
 				case state_t::connect: {
-					std::errc err = to.sock.ensure_connected();
+					std::errc err = to.sock.last_error();
 					if (err == std::errc(0))
 						err = to.sock.last_error();
 					if (err == std::errc(0)) {
@@ -417,6 +421,22 @@ void portal::on_disconnect() {
 		dc.message() = resolve_login();
 		from.paket_write(dc);
 	} catch (...) {}
+}
+
+void portal::on_timeout(std::uint32_t events) {
+	if (events & actions::in) {
+		switch (to_s) {
+			case state_t::connect:
+				timeout.read();
+				set_from_state_by_hs();
+				to.sock.close();
+				log_debug("connection timeout #" + std::to_string(id));
+				process_from_request();
+				return;
+			default:
+				return;
+		}
+	}
 }
 
 } // namespace mcshub

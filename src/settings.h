@@ -21,6 +21,7 @@ struct config {
 	std::uint16_t port;
 	unsigned int threads;
 	int max_packet_size;
+	unsigned long timeout;
 
 	std::string log;
 	log_level verb;
