@@ -1,6 +1,6 @@
 FROM alpine:latest
 ADD out/mcshub /usr/local/bin/mcshub
-RUN mkdir /mcshub && apk add libstdc++
+RUN mkdir /mcshub && apk --no-cache --no-progress add libstdc++
 WORKDIR /mcshub
 VOLUME /mcshub
 EXPOSE 25565/tcp

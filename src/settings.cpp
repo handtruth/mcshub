@@ -64,7 +64,7 @@ config::server_record conf_record_default() {
 
 std::shared_ptr<config> conf_default() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, unsigned(get_nprocs()), 6000, std_log, log_level::info, false, { false }, arguments.domain,
+		"0.0.0.0", arguments.port, unsigned(get_nprocs()), 6000, 500, std_log, log_level::info, false, { false }, arguments.domain,
 		conf_record_default()
 	});
 	return ptr;
@@ -72,7 +72,7 @@ std::shared_ptr<config> conf_default() {
 
 std::shared_ptr<config> conf_install() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, 1, 6000, std_log, log_level::info, false, { false }, arguments.domain,
+		"0.0.0.0", arguments.port, 1, 6000, 500, std_log, log_level::info, false, { false }, arguments.domain,
 		{ "", arguments.default_port, cdir/arguments.default_srv_dir/arguments.status,
 			cdir/arguments.default_srv_dir/arguments.login, true }
 	});
@@ -301,12 +301,16 @@ void operator>>(const YAML::Node & node, config::server_record & record) {
 		record.address = address.as<std::string>();
 	if (auto port = node["port"])
 		record.port = port.as<std::uint16_t>();
+	else
+		record.port = arguments.default_port;
 	if (auto status = node["status"])
 		record.status = status.as<std::string>();
 	if (auto login = node["login"])
 		record.login = login.as<std::string>();
 	if (auto allowFML = node["fml"])
 		record.allowFML = allowFML.as<bool>();
+	else
+		record.allowFML = false;
 	for (auto item : node["vars"]) {
 		record.vars[item.first.as<std::string>()] = item.second.as<std::string>();
 	}
@@ -342,6 +346,8 @@ void operator>>(const YAML::Node & node, config & conf) {
 		if (max_size < 0)
 			throw config_exception("max_packet_size", "maximum Minecraft packet size is lower than zero");
 	}
+	if (auto timeout = node["timeout"])
+		conf.timeout = timeout.as<unsigned long>();
 	if (auto log = node["log"])
 		conf.log = log.as<std::string>();
 	if (auto verb = node["verb"]) {
