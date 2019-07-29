@@ -16,7 +16,6 @@ Build_Alpine:
   artifacts:
     paths:
       - out/mcshub
-    expire_in: 1 week
 
 Build_X86_64:
   stage: build
@@ -27,7 +26,6 @@ Build_X86_64:
   artifacts:
     paths:
       - out/mcshub
-    expire_in: 1 week
 
 Build_Armhf:
   stage: build
@@ -38,7 +36,6 @@ Build_Armhf:
   artifacts:
     paths:
       - out/mcshub
-    expire_in: 1 week
 
 Test_X86_64:
   stage: test
@@ -63,7 +60,8 @@ AlpineDockerImage:
     DOCKER_HOST: tcp://docker:2375/
     IMAGE_TAG: $CI_REGISTRY_IMAGE:latest
   services:
-    - docker:dind
+    - name: docker:dind
+      entrypoint: ["dockerd", "--host=tcp://0.0.0.0:2375"]
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker build -t $IMAGE_TAG -f Dockerfile.alpine .
