@@ -93,7 +93,7 @@ void load_all_conf(const std::shared_ptr<config> & c, bool add_watch = false) {
 				// load mcsman settings first
 				log_info("init mcsman configuration for \"" + name + "\"");
 				servers[name] = config::server_record {
-					name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
+					name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, true, true,
 					{ { "name", name } }
 				};
 			}
@@ -172,7 +172,7 @@ void config::init_listener(event & poll) {
 							// add mcsman auto-record
 							log_info("added new mcsman server configuration \"" + name + "\"");
 							new_conf->servers[name] = config::server_record {
-								name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
+								name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, true, true,
 								{ { "name", name } }
 							};
 						}
@@ -204,7 +204,7 @@ void config::init_listener(event & poll) {
 						log_verbose("conf for \"" + name + "\" was deleted");
 						if (arguments.mcsman && name != "default") {
 							new_conf->servers[name] = config::server_record {
-								name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, false, true,
+								name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, true, true,
 								{ { "name", name } }
 							};
 							log_verbose("but mcsman conf for \"" + name + "\" was recreated");
