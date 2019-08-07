@@ -258,8 +258,8 @@ void portal::process_to_request() {
 void portal::to_send_new_hs() {
 	pakets::handshake new_hs = hs;
 	const auto & r = rec.get();
-	new_hs.address() = r.address;
-	new_hs.port() = r.port;
+	//new_hs.address() = r.address;
+	//new_hs.port() = r.port;
 	to.paket_write(new_hs);
 	to_s = state_t::proxy;
 	from_s = (hs.state() == 1) ? state_t::proxy : state_t::login;
