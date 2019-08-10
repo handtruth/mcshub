@@ -84,13 +84,13 @@ void portal::set_from_state_by_hs() {
 	}
 }
 
-const config::server_record & portal::record(const conf_snap & conf) {
+const config::basic_record & portal::record(const conf_snap & conf) {
 	const auto & servers = conf->servers;
 	std::string name = hs.address().c_str();
 	std::size_t name_sz = name.size();
 	const std::string & domain = conf->domain;
 	std::size_t domain_sz = domain.size();
-	bool allowed = name.size() == hs.address().size();
+	bool is_fml = name.size() != hs.address().size();
 	if (name[name_sz - 1] == '.')
 		name.pop_back();
 	if (name_sz > domain_sz && !std::strcmp(name.c_str() + name_sz - domain_sz, domain.c_str())) {
@@ -99,13 +99,14 @@ const config::server_record & portal::record(const conf_snap & conf) {
 	const auto & iter = servers.find(name);
 	if (iter != servers.end()) {
 		const config::server_record & r = iter->second;
-		if (allowed || r.allowFML)
-			return r;
+		if (is_fml && r.fml)
+			return *r.fml;
+		return r;
 	}
 	const config::server_record & r = conf->default_server;
-	if (allowed || r.allowFML)
-		return r;
-	throw bad_request("modded client is forbidden");
+	if (is_fml && r.fml)
+		return *r.fml;
+	return r;
 }
 
 std::string portal::resolve_status() {
@@ -114,7 +115,8 @@ std::string portal::resolve_status() {
 	std::ifstream file(record.status);
 	log_debug("open status file: " + record.status);
 	if (!file) {
-		log_warning("status file '" + record.status + "' not accessible");
+		if (!record.status.empty())
+			log_warning("status file '" + record.status + "' not accessible");
 		if (record.mcsman)
 			return vars.resolve(res::sample_mcsman_status_json, res::sample_mcsman_status_json_len);
 		else
@@ -130,7 +132,8 @@ std::string portal::resolve_login() {
 	std::ifstream file(record.login);
 	log_debug("open login file: " + record.login);
 	if (!file) {
-		log_warning("login file '" + record.login + "' not accessible");
+		if (!record.status.empty())
+			log_warning("login file '" + record.login + "' not accessible");
 		if (record.mcsman)
 			return vars.resolve(res::sample_mcsman_login_json, res::sample_mcsman_login_json_len);
 		else
@@ -165,6 +168,8 @@ void portal::from_handshake() {
 		return;
 	log_debug("client #" + std::to_string(id) + " send handshake: " + std::to_string(hs));
 	const auto & r = record(conf);
+	if (r.drop)
+		throw bad_request("drop");
 	rec = r;
 	if (!r.address.empty() && r.port) {
 		try {
@@ -257,9 +262,6 @@ void portal::process_to_request() {
 
 void portal::to_send_new_hs() {
 	pakets::handshake new_hs = hs;
-	const auto & r = rec.get();
-	//new_hs.address() = r.address;
-	//new_hs.port() = r.port;
 	to.paket_write(new_hs);
 	to_s = state_t::proxy;
 	from_s = (hs.state() == 1) ? state_t::proxy : state_t::login;
