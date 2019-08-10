@@ -81,6 +81,7 @@ Deploy:
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker pull $IMAGE_TAG
+    - docker stop mcsnet-mcshub
     - docker rm mcsnet-mcshub
     - docker restart mcsman
   tags: ["deploy"]
