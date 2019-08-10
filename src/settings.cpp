@@ -24,6 +24,7 @@ const fs::path cdir = ".";
 
 inotify_d fs_watcher;
 
+void fill_record(const YAML::Node & node, config::basic_record & record);
 void operator>>(const YAML::Node & node, config::server_record & record);
 void operator>>(const YAML::Node & node, config::dns_module & dns);
 void operator>>(const YAML::Node & node, config & conf);
@@ -58,23 +59,22 @@ struct srv_dir_wt : public watch_data {
 	} 
 } srv_dir;
 
-config::server_record conf_record_default() {
-	return { "", arguments.default_port, "", "", true, false };
+inline config::server_record conf_record_default() {
+	return { "", arguments.default_port, "", "", false, false, {} };
+}
+
+inline config::server_record conf_record_mcsman(const std::string & name) {
+	const std::string domain = name + "-mcs";
+	return {
+		domain, arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login,
+		false, true, { { "name", name } }
+	};
 }
 
 std::shared_ptr<config> conf_default() {
 	std::shared_ptr<config> ptr = std::make_shared<config>(config {
 		"0.0.0.0", arguments.port, unsigned(get_nprocs()), 6000, 500, std_log, log_level::info, false, { false }, arguments.domain,
 		conf_record_default()
-	});
-	return ptr;
-}
-
-std::shared_ptr<config> conf_install() {
-	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, 1, 6000, 500, std_log, log_level::info, false, { false }, arguments.domain,
-		{ "", arguments.default_port, cdir/arguments.default_srv_dir/arguments.status,
-			cdir/arguments.default_srv_dir/arguments.login, true }
 	});
 	return ptr;
 }
@@ -92,10 +92,7 @@ void load_all_conf(const std::shared_ptr<config> & c, bool add_watch = false) {
 			if (arguments.mcsman && name != "default") {
 				// load mcsman settings first
 				log_info("init mcsman configuration for \"" + name + "\"");
-				servers[name] = config::server_record {
-					name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, true, true,
-					{ { "name", name } }
-				};
+				servers[name] = conf_record_mcsman(name);
 			}
 			if (add_watch)
 				fs_watcher.add_watch(inev::create | inev::moved_to | inev::delete_self | inev::move_self, file.path(), &srv_dir);
@@ -171,10 +168,7 @@ void config::init_listener(event & poll) {
 						if (arguments.mcsman && name != "default") {
 							// add mcsman auto-record
 							log_info("added new mcsman server configuration \"" + name + "\"");
-							new_conf->servers[name] = config::server_record {
-								name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, true, true,
-								{ { "name", name } }
-							};
+							new_conf->servers[name] = conf_record_mcsman(name);
 						}
 						fs_watcher.add_watch(inev::delete_self | inev::move_self | inev::create | inev::moved_to, cdir/name, &srv_dir);
 					}
@@ -203,10 +197,7 @@ void config::init_listener(event & poll) {
 					if (old_conf->distributed) {
 						log_verbose("conf for \"" + name + "\" was deleted");
 						if (arguments.mcsman && name != "default") {
-							new_conf->servers[name] = config::server_record {
-								name + "-mcs", arguments.default_port, cdir/name/arguments.status, cdir/name/arguments.login, true, true,
-								{ { "name", name } }
-							};
+							new_conf->servers[name] = conf_record_mcsman(name);
 							log_verbose("but mcsman conf for \"" + name + "\" was recreated");
 						}
 					}
@@ -296,7 +287,15 @@ log_level str2lvl(const std::string & verb) {
 	throw config_exception("verb", "no '" + verb + "' log level");
 }
 
-void operator>>(const YAML::Node & node, config::server_record & record) {
+void fill_record(const YAML::Node & node, config::basic_record & record) {
+	if (node.IsScalar()) {
+		if (node.as<std::string>() == "drop") {
+			record.drop = true;
+			return;
+		}
+		throw config_exception("record", "this field should equals to \"drop\" or server record object");
+	} else
+		record.drop = false;
 	if (auto address = node["address"])
 		record.address = address.as<std::string>();
 	if (auto port = node["port"])
@@ -307,12 +306,33 @@ void operator>>(const YAML::Node & node, config::server_record & record) {
 		record.status = status.as<std::string>();
 	if (auto login = node["login"])
 		record.login = login.as<std::string>();
-	if (auto allowFML = node["fml"])
-		record.allowFML = allowFML.as<bool>();
-	else
-		record.allowFML = false;
 	for (auto item : node["vars"]) {
 		record.vars[item.first.as<std::string>()] = item.second.as<std::string>();
+	}
+}
+
+void operator>>(const YAML::Node & node, config::server_record & record) {
+	fill_record(node, record);
+	if (record.drop)
+		return;
+	if (auto fml = node["fml"]) {
+		if (fml.IsScalar()) {
+			try {
+				if (fml.as<bool>())
+					record.fml.reset();
+				else
+					record.fml = conf_record_default();
+			} catch (const YAML::Exception &) {
+				if (fml.as<std::string>() == "drop") {
+					record.fml = conf_record_default();
+					record.fml->drop = true;
+					return;
+				}
+				throw config_exception("record.fml", "only 'true', 'false' or 'drop' are supported as scalar values");
+			}
+		} else {
+			fill_record(fml, record.fml.emplace(conf_record_default()));
+		}
 	}
 }
 
@@ -389,7 +409,7 @@ void operator>>(const YAML::Node & node, config & conf) {
 		if (!servers.IsMap())
 			throw config_exception("servers", "not a map yaml structure");
 		for (auto record : servers) {
-			config::server_record server;
+			config::server_record server = conf_record_default();
 			record.second >> server;
 			conf.servers[record.first.as<std::string>()] = server;
 		}
@@ -412,7 +432,7 @@ void put_main_conf_file() {
 	config_file.close();
 }
 
-void config::install() const {
+void config::static_install() {
 	if (!fs::exists(arguments.default_srv_dir) && !fs::create_directory(arguments.default_srv_dir))
 		throw std::runtime_error("can't create directory");
 	std::ofstream status_file(arguments.default_srv_dir + '/' + arguments.status);
@@ -422,11 +442,6 @@ void config::install() const {
 	login_file.write(reinterpret_cast<const char *>(res::sample_default_login_json), res::sample_default_login_json_len);
 	login_file.close();
 	put_main_conf_file();
-}
-
-void config::static_install() {
-	auto c = conf_install();
-	c->install();
 }
 
 } // mcshub

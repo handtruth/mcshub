@@ -18,6 +18,8 @@ public:
 	bool install = false;
 	std::uint16_t port = 25565;
 	std::uint16_t default_port = 25565;
+	bool version = false;
+	bool help = false;
 
 	std::vector<std::string> other;
 

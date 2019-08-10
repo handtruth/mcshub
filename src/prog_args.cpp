@@ -23,7 +23,6 @@ const char * get_arg_value(char const **& it, const char ** end) {
 
 bool is_arg_name(const char * arg, const char * name) {
     size_t n = std::strlen(name);
-    //printf("%s::%s::%d::%c\n", arg, name, (int)((!std::strncmp(arg, name, n) && arg[n] == '=')), arg[n]);
     return !std::strcmp(arg, name) || (!std::strncmp(arg, name, n) && arg[n] == '=');
 }
 
@@ -48,7 +47,7 @@ void arguments_t::parse(int argn, const char ** args) {
                 status = get_arg_value(it, end);
             else if (is_arg_name(arg, "login"))
                 login = get_arg_value(it, end);
-            else if (is_arg_name(arg, "default_dir"))
+            else if (is_arg_name(arg, "default-dir"))
                 default_srv_dir = get_arg_value(it, end);
             else if (is_arg_name(arg, "domain"))
                 domain = get_arg_value(it, end);
@@ -58,8 +57,12 @@ void arguments_t::parse(int argn, const char ** args) {
                 install = true;
             else if (is_arg_name(arg, "port"))
                 port = assert_arg_range<std::uint16_t>(std::atoi(get_arg_value(it, end)), "port");
-            else if (is_arg_name(arg, "default_port"))
+            else if (is_arg_name(arg, "default-port"))
                 default_port = assert_arg_range<std::uint16_t>(std::atoi(get_arg_value(it, end)), "port");
+            else if (is_arg_name(arg, "version"))
+                version = true;
+            else if (is_arg_name(arg, "help"))
+                help = true;
             else
                 throw std::invalid_argument("urecognized argument '" + std::string(arg) + "'");
         } else if (*curr == '-') {
@@ -70,6 +73,10 @@ void arguments_t::parse(int argn, const char ** args) {
                     install = true;
                 else if (c == 'm')
                     mcsman = true;
+                else if (c == 'v')
+                    version = true;
+                else if (c == 'h')
+                    help = true;
                 else
                     throw std::invalid_argument(std::string("unrecognized option '") + c + "'");
             }

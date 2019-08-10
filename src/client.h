@@ -72,7 +72,7 @@ class portal {
 	server_vars srv_vars;
 	file_vars f_vars;
 	conf_snap conf;
-	std::reference_wrapper<const config::server_record> rec;
+	std::reference_wrapper<const config::basic_record> rec;
 	vars_manager<main_vars_t, server_vars, file_vars, pakets::handshake, env_vars_t> vars;
 	enum class state_t {
 		handshake, connect, wait, status_fake, login_fake, login, proxy, proxy_stable, ping
@@ -82,7 +82,7 @@ class portal {
 		disconnected = true;
 	}
 	void set_from_state_by_hs();
-	const config::server_record & record(const conf_snap & conf);
+	const config::basic_record & record(const conf_snap & conf);
 	std::string resolve_status();
 	std::string resolve_login();
 	void process_from_request();

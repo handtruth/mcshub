@@ -1,0 +1,73 @@
+## Minecraft server hub configuration file
+
+## All options marked as dynamic can be changed while MCSHub is working.
+## They will be applied for new connections immideatly. Values that are
+## set in this file are the default values.
+
+## IP address, where new connections will be listened to
+#address: "0.0.0.0"
+
+## Port, where new connections will be listened to
+#port: 25565
+
+## Amount of working threads
+#threads: $cpu
+
+## Maximum allowed packet size for some first Minecraft protocol packets
+## from client (dynamic)
+#max_packet_size: 6000
+
+## Maximum time waiting connection to background server
+#timeout: 500
+
+## Specify filename for log output
+#log: $std
+
+## Logging verbosity level. Can be: fatal, error, warning, info, verbose,
+## debug
+#verb: info
+
+## Set 'true' to allow configuration 'mcshub.yml' files from (dynamic)
+#distributed: false
+
+## Specify domain for all named server configurations. This option will
+## add domain name suffix to each configuration. (dynamic)
+#domain: ""
+
+## This is the default configuration for all server names, that can't be
+## found in the list 'servers' or in the distributed configuration files.
+## (dynamic).
+#default:
+  ## Backend server address. If address not present, fake status will be
+  ## returned every time. (dynamic)
+  #address: ""
+
+  ## Backend server port. (dynamic)
+  #port: 25565
+
+  ## Status file that will be sent to client. If it is not accessible
+  ## then the default status will be sent. (dynamic)
+  #status: "./default/status.json"
+
+  ## File that contains chat object that will be sent when client will
+  ## try to connect to this server and backend server is down at that
+  ## time. If it is not accessible then the default message will be sent.
+  ## (dynamic)
+  #login: "./default/login.json"
+
+  ## If this option is set to 'false' then modded clients with Forge
+  ## Modloader will be forbidden. (dynamic)
+  #allowFML: true
+
+  ## Optional variables that can be accessed with ${ var:<var_name> }
+  ## from status and login files. This option is set when MCSMan module
+  ## activated.
+  #vars:
+    #name: "default"
+
+## Named server configurations the same as in the default. (dynamic)
+#servers:
+  #example:
+    #address: "example.org"
+    #status: "./example/status.json"
+    #login: "./example/login.json"
