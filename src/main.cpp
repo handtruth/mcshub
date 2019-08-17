@@ -6,8 +6,9 @@
 #include "thread_controller.h"
 #include "signal_d.h"
 #include "event_pull.h"
+#include "manager.h"
 
-const std::string version = "v1.1.0";
+const std::string version = "v1.1.1";
 
 int main(int argc, char *argv[]) {
 	using namespace mcshub;
@@ -18,7 +19,7 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 	if (arguments.help) {
-		std::cout << "Usage: " << argv[0] << R"""( [options]
+		std::cout << "Usage: " << argv[0] << R"==( [options]
 Options:
   -h, --help                       display this help message and exit
   -v, --version                    print version number and exit
@@ -32,12 +33,17 @@ Options:
       --domian DOMAIN              specify domain name (the same option as in
                                    mcshub.yml file). This option will be overriden
                                    by "domain"field in mcshub.yml file
+  -d, --distributed                enable distributed MCSHub configuration
+      --drop                       drop if no server entry matches
+      --max-packet-size            set maximum allowed packet size for Minecraft
+                                   protocol
+      --timeout                    set timeout
   -m, --mcsman                     enable extra functionality for MCSMan
       --port TCP_PORT              set listen port for MCSHub. This option will be
                                    overriden by port number in configuration file.
       --default-port DEFAULT_PORT  set the default TCP port number for all server
                                    records in configuration file.
-)""";
+)==";
 		return EXIT_SUCCESS;
 	}
 	if (arguments.version) {
@@ -85,6 +91,12 @@ Options:
 				return;
 		}
 	});
+	manager manager;
+	input.set_non_block();
+	if (arguments.cli)
+		poll.add(input, [&manager](auto &, auto) {
+			manager.on_line();
+		});
 	while (true) poll.pull(-1);
 	return EXIT_SUCCESS;
 }

@@ -7,8 +7,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include "descriptor.h"
 #include "primitives.h"
+#include "in_stream_d.h"
+#include "out_stream_d.h"
 
 namespace mcshub {
 
@@ -75,7 +76,7 @@ struct connection_info {
 	}
 };
 
-class tcp_socket_d : public descriptor {
+class tcp_socket_d : public in_stream_d, public out_stream_d {
 private:
 	endpoint_info local_info;
 	endpoint_info remote_info;
@@ -98,8 +99,8 @@ public:
 		return remote_info;
 	}
 	std::errc last_error();
-	int read(byte_t bytes[], size_t length);
-	int write(const byte_t bytes[], size_t length);
+	virtual int read(byte_t bytes[], size_t length) override;
+	virtual int write(const byte_t bytes[], size_t length) override;
 	virtual ~tcp_socket_d() override;
 	friend class tcp_listener_d;
 };
@@ -129,7 +130,7 @@ public:
 	udp_server_d(const std::string & address, std::uint16_t port);
 	virtual std::string to_string() const noexcept override;
 	int read(byte_t bytes[], size_t length, endpoint_info * remote_endpoint);
-	int write(byte_t bytes[], size_t length, const endpoint_info & remote_endpoint);
+	int write(const byte_t bytes[], size_t length, const endpoint_info & remote_endpoint);
 	const endpoint_info & local_endpoint() const noexcept {
 		return local_info;
 	}

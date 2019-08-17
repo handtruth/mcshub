@@ -227,7 +227,7 @@ int udp_server_d::read(byte_t bytes[], size_t length, endpoint_info * remote_end
     return r;
 }
 
-int udp_server_d::write(byte_t bytes[], size_t length, const endpoint_info & remote_endpoint) {
+int udp_server_d::write(const byte_t bytes[], size_t length, const endpoint_info & remote_endpoint) {
     int r = sendto(handle, bytes, length, 0, &(remote_endpoint.info.addr), sizeof(remote_endpoint.info));
     if (r < 0)
         throw std::system_error(std::make_error_code(std::errc(errno)),

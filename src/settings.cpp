@@ -59,10 +59,6 @@ struct srv_dir_wt : public watch_data {
 	} 
 } srv_dir;
 
-inline config::server_record conf_record_default() {
-	return { "", arguments.default_port, "", "", false, false, {} };
-}
-
 inline config::server_record conf_record_mcsman(const std::string & name) {
 	const std::string domain = name + "-mcs";
 	return {
@@ -71,13 +67,8 @@ inline config::server_record conf_record_mcsman(const std::string & name) {
 	};
 }
 
-std::shared_ptr<config> conf_default() {
-	std::shared_ptr<config> ptr = std::make_shared<config>(config {
-		"0.0.0.0", arguments.port, unsigned(get_nprocs()), 6000, 500, std_log, log_level::info, false, { false }, arguments.domain,
-		conf_record_default()
-	});
-	return ptr;
-}
+config default_conf;
+config::basic_record default_record;
 
 matomic<std::shared_ptr<const config>> conf_instance;
 const matomic<std::shared_ptr<const config>> & conf = conf_instance;
@@ -106,7 +97,7 @@ void load_all_conf(const std::shared_ptr<config> & c, bool add_watch = false) {
 					if (iter != servers.end()) {
 						node >> iter->second;
 					} else {
-						config::server_record record = conf_record_default();
+						config::server_record record = default_record;
 						node >> record;
 						servers[name] = record;
 					}
@@ -118,12 +109,47 @@ void load_all_conf(const std::shared_ptr<config> & c, bool add_watch = false) {
 	}
 }
 
+void reload_configuration() {
+	auto new_conf = std::make_shared<config>(default_conf);
+	load_all_conf(new_conf);
+	conf_instance = new_conf;
+}
+
 void config::initialize() {
 	if (!fs::exists(arguments.confname))
 		put_main_conf_file();
+	default_conf = {
+		arguments.address, // address
+		arguments.port, // port
+		unsigned(get_nprocs()), // threads
+		arguments.max_packet_size, // max_packet_size
+		arguments.timeout, // timeout
+		std_log, // log
+		log_level::info, // verb
+		arguments.distributed, // distributed
+		{ false }, // dns
+		arguments.domain, // domain
+		{ // default
+			"", // address
+			arguments.default_port, // port
+			cdir/arguments.default_srv_dir/arguments.status, // status
+			cdir/arguments.default_srv_dir/arguments.login, // login
+			arguments.drop, // drop
+			false, // mcsman
+			{}, // vars
+		},
+	};
+	default_record = {
+		std::string(), //address
+		arguments.default_port, // port
+		"", // status
+		"", // login
+		false, // drop
+		{}, //vars
+	};
 	fs_watcher.add_watch(inev::close_write | inev::delete_self | inev::move_self, arguments.confname, &main_conf);
 	fs_watcher.add_watch(inev::create | inev::moved_to | inev::in_delete, cdir, &main_dir);
-	auto c = conf_default();
+	auto c = std::make_shared<config>(default_conf);
 	load_all_conf(c, true);
 	conf_instance = c;
 }
@@ -145,7 +171,7 @@ void config::init_listener(event & poll) {
 					// main_conf: close_write
 					try {
 						// Unfortunately, it is required to reload everything :(
-						new_conf = conf_default();
+						new_conf = std::make_shared<config>(default_conf);
 						load_all_conf(new_conf);
 					} catch (const YAML::Exception & yaml_e) {
 						log_error("main configuration file has problems");
@@ -212,7 +238,7 @@ void config::init_listener(event & poll) {
 						if (iter != servers.end()) {
 							node >> iter->second;
 						} else {
-							config::server_record record = conf_record_default();
+							config::server_record record = default_record;
 							node >> record;
 							servers[name] = record;
 						}
@@ -239,7 +265,7 @@ void config::init_listener(event & poll) {
 								if (iter != servers.end()) {
 									node >> iter->second;
 								} else {
-									config::server_record record = conf_record_default();
+									config::server_record record = default_record;
 									node >> record;
 									servers[name] = record;
 								}
@@ -321,17 +347,17 @@ void operator>>(const YAML::Node & node, config::server_record & record) {
 				if (fml.as<bool>())
 					record.fml.reset();
 				else
-					record.fml = conf_record_default();
+					record.fml = default_record;
 			} catch (const YAML::Exception &) {
 				if (fml.as<std::string>() == "drop") {
-					record.fml = conf_record_default();
+					record.fml = default_record;
 					record.fml->drop = true;
 					return;
 				}
 				throw config_exception("record.fml", "only 'true', 'false' or 'drop' are supported as scalar values");
 			}
 		} else {
-			fill_record(fml, record.fml.emplace(conf_record_default()));
+			fill_record(fml, record.fml.emplace(default_record));
 		}
 	}
 }
@@ -381,25 +407,8 @@ void operator>>(const YAML::Node & node, config & conf) {
 		conf.distributed = distributed.as<bool>();
 	if (auto dns = node["dns"])
 		dns >> conf.dns;
-	if (auto domain = node["domain"]) {
-		std::string & name = conf.domain = domain.as<std::string>();
-		if (!name.empty()) {
-			if (name == ".")
-				name = "";
-			else {
-				if (name[0] == '.')
-					throw config_exception("domain", "domain name can't start with '.'");
-				for (std::size_t i = 0, size = name.size(); i < size; i++) {
-					char c = name[i];
-					if (c != '.' && !std::isalnum(c) && c != '_' && c != '-')
-						throw config_exception("domain", "domain name has illegal characters");
-				}
-				if (name[name.size() - 1] == '.')
-					name.pop_back();
-				name = '.' + name;
-			}
-		}
-	}
+	if (auto domain = node["domain"])
+		check_domain(conf.domain = domain.as<std::string>());
 	if (auto default_server = node["default"]) {
 		if (!default_server.IsMap())
 			throw config_exception("default", "not a map yaml structure");
@@ -409,7 +418,7 @@ void operator>>(const YAML::Node & node, config & conf) {
 		if (!servers.IsMap())
 			throw config_exception("servers", "not a map yaml structure");
 		for (auto record : servers) {
-			config::server_record server = conf_record_default();
+			config::server_record server = default_record;
 			record.second >> server;
 			conf.servers[record.first.as<std::string>()] = server;
 		}
@@ -442,6 +451,25 @@ void config::static_install() {
 	login_file.write(reinterpret_cast<const char *>(res::sample_default_login_json), res::sample_default_login_json_len);
 	login_file.close();
 	put_main_conf_file();
+}
+
+void check_domain(std::string & name) {
+	if (!name.empty()) {
+		if (name == ".")
+			name = "";
+		else {
+			if (name[0] == '.')
+				throw config_exception("domain", "domain name can't start with '.'");
+			for (std::size_t i = 0, size = name.size(); i < size; i++) {
+				char c = name[i];
+				if (c != '.' && !std::isalnum(c) && c != '_' && c != '-')
+					throw config_exception("domain", "domain name has illegal characters");
+			}
+			if (name[name.size() - 1] == '.')
+				name.pop_back();
+			name = '.' + name;
+		}
+	}
 }
 
 } // mcshub

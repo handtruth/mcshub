@@ -69,6 +69,8 @@ struct config {
 		}
 	public:
 		server_record() = default;
+		server_record(const basic_record & other) : basic_record(other) {}
+		server_record(basic_record && other) : basic_record(std::move(other)) {}
 		server_record(const std::string & address, std::uint16_t port, const std::string & status,
 			const std::string & login, bool drop, bool mcsman,
 			const std::unordered_map<std::string, std::string> & vars) :
@@ -86,9 +88,19 @@ struct config {
 			copy_fml(other.fml);
 			return *this;
 		}
+		server_record & operator=(const basic_record & other) {
+			((basic_record &)(*this)) = other;
+			fml.reset();
+			return *this;
+		}
 		server_record & operator=(server_record && other) noexcept {
 			((basic_record &)(*this)) = std::move(other);
 			move_fml(std::move(other.fml));
+			return *this;
+		}
+		server_record & operator=(basic_record && other) noexcept {
+			((basic_record &)(*this)) = std::move(other);
+			fml.reset();
 			return *this;
 		}
 	} default_server;
@@ -101,6 +113,8 @@ struct config {
 	static void static_install();
 };
 
+extern config default_conf;
+extern config::basic_record default_record;
 extern const matomic<std::shared_ptr<const config>> & conf;
 
 class conf_snap {
@@ -128,6 +142,10 @@ public:
 		return cause.c_str();
 	}
 };
+
+void reload_configuration();
+
+void check_domain(std::string & name);
 
 } // mcshub
 

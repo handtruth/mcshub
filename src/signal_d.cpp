@@ -3,6 +3,7 @@
 #include <system_error>
 #include <sys/signalfd.h>
 #include <unistd.h>
+#include <signal.h>
 
 namespace mcshub {
 
