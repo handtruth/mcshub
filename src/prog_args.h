@@ -16,10 +16,16 @@ public:
 	std::string domain = "";
 	bool mcsman = false;
 	bool install = false;
+	bool distributed = false;
+	bool drop = false;
+	std::string address = "0.0.0.0";
 	std::uint16_t port = 25565;
 	std::uint16_t default_port = 25565;
+	int max_packet_size = 6000;
+	unsigned long timeout = 500;
 	bool version = false;
 	bool help = false;
+	bool cli = false;
 
 	std::vector<std::string> other;
 

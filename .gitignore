@@ -13,3 +13,4 @@
 /Makefile
 *.gcno
 /start
+/.vscode/launch.json

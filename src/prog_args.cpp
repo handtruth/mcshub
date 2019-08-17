@@ -55,14 +55,26 @@ void arguments_t::parse(int argn, const char ** args) {
                 mcsman = true;
             else if (is_arg_name(arg, "install"))
                 install = true;
+            else if (is_arg_name(arg, "distributed"))
+                distributed = true;
+            else if (is_arg_name(arg, "distributed"))
+                drop = true;
+            else if (is_arg_name(arg, "address"))
+                address = get_arg_value(it, end);
             else if (is_arg_name(arg, "port"))
                 port = assert_arg_range<std::uint16_t>(std::atoi(get_arg_value(it, end)), "port");
             else if (is_arg_name(arg, "default-port"))
-                default_port = assert_arg_range<std::uint16_t>(std::atoi(get_arg_value(it, end)), "port");
+                default_port = assert_arg_range<std::uint16_t>(std::atoi(get_arg_value(it, end)), "default-port");
+            else if (is_arg_name(arg, "max-packet-size"))
+                max_packet_size = assert_arg_range<int>(std::atoi(get_arg_value(it, end)), "max-packet-size");
+            else if (is_arg_name(arg, "timeout"))
+                max_packet_size = assert_arg_range<int>(std::atoi(get_arg_value(it, end)), "timeout");
             else if (is_arg_name(arg, "version"))
                 version = true;
             else if (is_arg_name(arg, "help"))
                 help = true;
+            else if (is_arg_name(arg, "cli"))
+                cli = true;
             else
                 throw std::invalid_argument("urecognized argument '" + std::string(arg) + "'");
         } else if (*curr == '-') {
@@ -73,10 +85,14 @@ void arguments_t::parse(int argn, const char ** args) {
                     install = true;
                 else if (c == 'm')
                     mcsman = true;
+                else if (c == 'd')
+                    distributed = true;
                 else if (c == 'v')
                     version = true;
                 else if (c == 'h')
                     help = true;
+                else if (c == 'c')
+                    cli = true;
                 else
                     throw std::invalid_argument(std::string("unrecognized option '") + c + "'");
             }

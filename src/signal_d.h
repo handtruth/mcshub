@@ -40,6 +40,10 @@ enum class sig {
 	file_size_limit     = SIGXFSZ,
 };
 
+inline int kill(pid_t pid, sig signal) {
+	return::kill(pid, (int) signal);
+}
+
 class signal_d : public descriptor {
 private:
 	sigset_t mask;
