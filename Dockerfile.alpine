@@ -1,6 +1,6 @@
 FROM alpine:latest
 ADD dist/x86_64-alpine-linux-musl/bin/mcshub /usr/local/bin/mcshub
-RUN mkdir apk --no-cache --no-progress add libstdc++
+RUN apk --no-cache --no-progress add libstdc++
 WORKDIR /mcshub
 VOLUME /mcshub
 EXPOSE 25565/tcp
