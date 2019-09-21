@@ -1,60 +1,172 @@
-image: reg.handtruth.com/mc/mcshub/build-tools:latest
+image: reg.handtruth.com/roots/cpp-meson/build:debian
 
 stages:
+  - setup
   - build
   - test
+  - analysis
   - package
+  - image
   - deploy
 
-Build_Alpine:
-  stage: build
-  image: reg.handtruth.com/mc/mcshub/build-alpine:latest
+variables:
+  GIT_SUBMODULE_STRATEGY: normal
+
+Restore:x86_64-linux-gnu: &restore
+  stage: setup
+  variables:
+    TARGET: x86_64-linux-gnu
   script:
-    - ./configure
-    - make
+    - meson -Db_coverage=true build/$TARGET --cross-file=$TARGET
   tags: ["default"]
   artifacts:
     paths:
-      - out/mcshub
+      - build
+    expire_in: 2 hrs
 
-Build_X86_64:
+Restore:arm-linux-gnueabihf:
+  <<: *restore
+  variables:
+    TARGET: arm-linux-gnueabihf
+
+Restore:x86_64-alpine-linux-musl:
+  <<: *restore
+  image: reg.handtruth.com/roots/cpp-meson/build:alpine
+  variables:
+    TARGET: x86_64-alpine-linux-musl
+
+Build:x86_64-linux-gnu: &build
   stage: build
+  variables:
+    TARGET: x86_64-linux-gnu
   script:
-    - ./configure --target="x86_64-linux-gnu" --gcc-version=8
-    - make
+    - cd build/$TARGET
+    - ninja
   tags: ["default"]
   artifacts:
     paths:
-      - out/mcshub
+      - build
+    expire_in: 2 hrs
+  dependencies:
+    - Restore:x86_64-linux-gnu
 
-Build_Armhf:
-  stage: build
-  script:
-    - ./configure --target="arm-linux-gnueabihf" --gcc-version=8
-    - make
-  tags: ["default"]
-  artifacts:
-    paths:
-      - out/mcshub
+Build:arm-linux-gnueabihf:
+  <<: *build
+  variables:
+    TARGET: arm-linux-gnueabihf
+  dependencies:
+    - Restore:arm-linux-gnueabihf
 
-Test_X86_64:
+Build:x86_64-alpine-linux-musl:
+  <<: *build
+  image: reg.handtruth.com/roots/cpp-meson/build:alpine
+  variables:
+    TARGET: x86_64-alpine-linux-musl
+  dependencies:
+    - Restore:x86_64-alpine-linux-musl
+
+Test:x86_64-linux-gnu: &test
   stage: test
+  variables:
+    TARGET: x86_64-linux-gnu
+    MESON_TESTTHREADS: 1
   script:
-    - ./configure --target="x86_64-linux-gnu" --gcc-version=8
-    - make test
+    - cd build/$TARGET
+    - meson test --wrap='valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes'
+    - cat meson-logs/testlog-valgrind.txt
   tags: ["default"]
-  dependencies: []
-  
-Memcheck_X86_64:
-  stage: test
+  artifacts:
+    paths:
+      - build
+    expire_in: 2 hrs
+  dependencies:
+    - Restore:x86_64-linux-gnu
+    - Build:x86_64-linux-gnu
+
+Test:arm-linux-gnueabihf:
+  <<: *test
+  image: reg.handtruth.com/roots/cpp-meson/build:debian-armhf
+  variables:
+    TARGET: arm-linux-gnueabihf
+  tags: ["armhf"]
+  dependencies:
+    - Restore:arm-linux-gnueabihf
+    - Build:arm-linux-gnueabihf
+  when: manual
+
+Test:x86_64-alpine-linux-musl:
+  <<: *test
+  image: reg.handtruth.com/roots/cpp-meson/build:alpine
+  variables:
+    TARGET: x86_64-alpine-linux-musl
+  dependencies:
+    - Restore:x86_64-alpine-linux-musl
+    - Build:x86_64-alpine-linux-musl
+
+Coverage: &coverage
+  stage: analysis
+  variables:
+    TARGET: x86_64-linux-gnu
   script:
-    - ./configure --target="x86_64-linux-gnu" --gcc-version=8 --debug
-    - make test DBG="valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes"
+    - cd build/$TARGET
+    - ninja coverage-text
+    - cat meson-logs/coverage.txt
+  coverage: '/^TOTAL\s+\S+\s+\S+\s+(\d+\.?\d+)%/'
   tags: ["default"]
+  artifacts:
+    paths:
+      - build
+    expire_in: 2 hrs
+  dependencies:
+    - Restore:x86_64-linux-gnu
+    - Build:x86_64-linux-gnu
+    - Test:x86_64-linux-gnu
+
+Check:
+  stage: analysis
+  variables:
+    TARGET: x86_64-linux-gnu
+  script:
+    - cd build/$TARGET
+    - ninja cppcheck
+  coverage: '/^TOTAL\s+\S+\s+\S+\s+(\d+\.?\d+)%/'
+  tags: ["default"]
+  artifacts:
+    paths:
+      - build/x86_64-linux-gnu/cppcheck.log
+    expire_in: 1 week
+  dependencies:
+    - Restore:x86_64-linux-gnu
+
+Package:x86_64-linux-gnu: &package
+  stage: package
+  variables:
+    TARGET: x86_64-linux-gnu
+  script:
+    - meson -Dprefix=`pwd`/dist/$TARGET -Dbuildtype=release -Doptimization=3 --cross-file=$TARGET package/$TARGET
+    - cd package/$TARGET
+    - ninja
+    - ninja install
+  tags: ["default"]
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1 mos
   dependencies: []
+
+Package:arm-linux-gnueabihf:
+  <<: *package
+  variables:
+    TARGET: arm-linux-gnueabihf
+
+Package:x86_64-alpine-linux-musl:
+  <<: *package
+  image: reg.handtruth.com/roots/cpp-meson/build:alpine
+  variables:
+    TARGET: x86_64-alpine-linux-musl
 
 AlpineDockerImage:
-  stage: package
+  stage: image
   image: docker:stable
   variables:
     DOCKER_HOST: tcp://docker:2375/
@@ -71,13 +183,14 @@ AlpineDockerImage:
   only:
     - master
   dependencies:
-    - Build_Alpine
+    - Package:x86_64-alpine-linux-musl
 
 Deploy:
   stage: deploy
   image: docker:stable
   variables:
     IMAGE_TAG: $CI_REGISTRY_IMAGE:latest
+    GIT_STRATEGY: none
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker pull $IMAGE_TAG
@@ -87,8 +200,6 @@ Deploy:
   tags: ["deploy"]
   only:
     - master
+  cache:
+    paths: []
   dependencies: []
-
-cache:
-  paths:
-    - dep

@@ -1,8 +1,8 @@
-#include "test.h"
+#include "test.hpp"
 
-#include "prog_args.h"
+#include "prog_args.hpp"
 
-int main() {
+test {
     using namespace mcshub;
     using namespace std;
     using namespace std::literals;
@@ -15,5 +15,4 @@ int main() {
     assert_equals(255, args.port);
 
     assert_equals(false, args.install);
-    return 0;
 }

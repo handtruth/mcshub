@@ -44,23 +44,27 @@ How to build it?
 ### 1. Build from Source
 
 This software works only with Linux OS. If you want to build it,
-you need xxd, bash, make, wget, cmake and g++ to be installed
-first.
+you need python3, ninja, bash, wget, cmake and g++ to be
+installed first. [Meson](https://mesonbuild.com/index.html)
+build system also needs to be installed.
 
 If you using Debian like OS, you can install everything you
 need, with *apt* like this:
 ```sh
-apt install -y xxd make cmake g++
+apt install -y cmake g++ python3 python3-pip \
+  python3-setuptools python3-wheel ninja-build \
+  && python3 -m pip install --user meson
 ```
 
-After that you can build MCSHub as regular:
+After that you can build MCSHub:
 ```
-./configure && make
+meson build && cd build \
+  && ninja -Dbuildtype=release -Doptimization=3 -Dsystemd=true
 ```
 
 If you want to, you can install MCSHub into your system like so.
 ```
-make install
+ninja install
 ```
 
 After installation you can find mcshub configuration at 
@@ -69,7 +73,7 @@ now on as *mcshub.service*.
 
 Execute this command to remove MCSHub from your system.
 ```
-make uninstall
+ninja uninstall
 ```
 
 ### 2. Build Docker Image

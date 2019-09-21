@@ -1,22 +1,23 @@
-#include "manager.h"
+#include "manager.hpp"
 
 #include <iostream>
 #include <unistd.h>
 
-#include "settings.h"
-#include "signal_d.h"
+#include <ekutils/signal_d.hpp>
+
+#include "settings.hpp"
 
 namespace mcshub {
 
-struct record_form : public cli_form {
+struct record_form : public ekutils::cli_form {
 	std::string name;
-	config::basic_record record = default_record;
+	settings::basic_record record = default_record;
 
-	static cli_form_ptr instance();
+	static ekutils::cli_form_ptr instance();
 	virtual void fill(const std::map<std::string, std::string> & values) override;
 };
 
-cli_form_ptr record_form::instance() {
+ekutils::cli_form_ptr record_form::instance() {
 	return std::make_unique<record_form>();
 }
 
@@ -36,12 +37,12 @@ void record_form::fill(const std::map<std::string, std::string> & values) {
 		} else if (entry.first == "name") {
 			name = entry.second;
 		} else {
-			throw cli_form_error("option \"" + entry.first + "\" does not exists");
+			throw ekutils::cli_form_error("option \"" + entry.first + "\" does not exists");
 		}
 	}
 }
 
-void special_assign(config::server_record & it, const config::basic_record & other) {
+void special_assign(settings::server_record & it, const settings::basic_record & other) {
 	auto fml = it.fml;
 	it = other;
 	it.fml = fml;
@@ -49,7 +50,7 @@ void special_assign(config::server_record & it, const config::basic_record & oth
 
 manager::manager() {
 	root.action("stop", [](auto &) {
-		kill(getpid(), sig::termination);
+		kill(getpid(), ekutils::sig::termination);
 	}, "stop mcshub");
 	root.action("help", [this](auto &) {
 		for (auto & line : root.help())
@@ -92,14 +93,14 @@ manager::manager() {
 		std::string scope = form_as_word(forms, "scope");
 		if (scope == "default") {
 			const auto & type = form_as_word(forms, "type");
-			const auto & form = get_form<record_form>(forms, "record");
+			const auto & form = ekutils::get_form<record_form>(forms, "record");
 			if (type == "default-auto")
 				special_assign(default_conf.default_server, form.record);
 			else if (type == "default-fml")
 				default_conf.default_server.fml = form.record;
 			else {
 				if (form.name.empty())
-					throw cli_form_error("empty record name");
+					throw ekutils::cli_form_error("empty record name");
 				auto & servers = default_conf.servers;
 				auto & record = (servers.find(form.name) == servers.end()) ?
 					servers.emplace(form.name, default_record).first->second :
@@ -117,7 +118,7 @@ void manager::on_line() {
 	std::string line;
 	while (input.read_line(line)) {
 		try {
-			std::unordered_map<std::string, cli_form_ptr> forms;
+			std::unordered_map<std::string, ekutils::cli_form_ptr> forms;
 			root.process(line.c_str(), forms);
 		} catch (const std::exception & e) {
 			std::cerr << e.what() << std::endl;

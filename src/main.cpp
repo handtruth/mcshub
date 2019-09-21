@@ -1,14 +1,14 @@
 #include <iostream>
 
-#include "settings.h"
-#include "log.h"
-#include "prog_args.h"
-#include "thread_controller.h"
-#include "signal_d.h"
-#include "event_pull.h"
-#include "manager.h"
+#include <ekutils/signal_d.hpp>
+#include <ekutils/epoll_d.hpp>
+#include <ekutils/log.hpp>
 
-const std::string version = "v1.1.1";
+#include "settings.hpp"
+#include "prog_args.hpp"
+#include "thread_controller.hpp"
+#include "manager.hpp"
+#include "config.hpp"
 
 int main(int argc, char *argv[]) {
 	using namespace mcshub;
@@ -47,30 +47,31 @@ Options:
 		return EXIT_SUCCESS;
 	}
 	if (arguments.version) {
-		std::cout << version << std::endl;
+		std::cout << config::build << std::endl;
 		return EXIT_SUCCESS;
 	}
 	if (arguments.install) {
-		config::static_install();
+		settings::static_install();
 		return EXIT_SUCCESS;
 	}
-	stdout_log l(log_level::debug);
-	log = &l;
-	config::initialize();
+	ekutils::stdout_log l(ekutils::log_level::debug);
+	ekutils::log = &l;
+	settings::initialize();
 	log_info("switch log depends configuration");
-	std::shared_ptr<const config> c = conf;
+	std::shared_ptr<const settings> c = conf;
 	if ((const std::string &)(c->log) == "$std")
-		log->set_log_level(c->verb);
+		ekutils::log->set_log_level(c->verb);
 	else
-		log = new file_log(c->log, c->verb);
-	signal_d signal { sig::abort, sig::broken_pipe, sig::termination, sig::segmentation_fail };
-	event poll;
-	config::init_listener(poll);
-	log_verbose("current version -- " + version);
+		ekutils::log = new ekutils::file_log(c->log, c->verb);
+	using ekutils::sig;
+	ekutils::signal_d signal { sig::abort, sig::broken_pipe, sig::termination, sig::segmentation_fail };
+	ekutils::epoll_d poll;
+	settings::init_listener(poll);
+	log_verbose("current version -- " + config::version);
 	log_verbose("start server on " + c->address + ':' + std::to_string(c->port));
 	c.reset();
 	thread_controller controller;
-	poll.add(signal, [&signal, &controller](descriptor &, std::uint32_t) {
+	poll.add(signal, [&signal, &controller](auto &, std::uint32_t) {
 		switch (signal.read()) {
 			case sig::abort:
 				log_fatal("abort signal received, a part of the MCSHub was destroyed");
@@ -92,11 +93,11 @@ Options:
 		}
 	});
 	manager manager;
-	input.set_non_block();
+	ekutils::input.set_non_block();
 	if (arguments.cli)
-		poll.add(input, [&manager](auto &, auto) {
+		poll.add(ekutils::input, [&manager](auto &, auto) {
 			manager.on_line();
 		});
-	while (true) poll.pull(-1);
+	while (true) poll.wait(-1);
 	return EXIT_SUCCESS;
 }
