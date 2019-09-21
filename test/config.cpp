@@ -1,8 +1,12 @@
-#include "settings.h"
-#include "log.h"
-#include <iostream>
+#include "settings.hpp"
+#include "test.hpp"
+#include <ekutils/log.hpp>
 
-void print_record(const mcshub::config::server_record & record) {
+#include <sstream>
+
+using ekutils::log;
+
+void print_record(const mcshub::settings::server_record & record) {
     using namespace std;
     using namespace mcshub;
     static auto tab = string("\t");
@@ -18,13 +22,36 @@ void print_record(const mcshub::config::server_record & record) {
     log->info(result);
 }
 
-int main(int argc, char *argv[]) {
+test {
+    std::istringstream input(
+R"==(
+#MCSHub example config
+address: 127.0.0.1
+port: 25564
+threads: 5
+log: $other
+verb: warning
+
+default: &srv
+  address: mc.handtruth.com
+  port: 25561
+  response: "example/response.json"
+  login: "example/login.json"
+  log: "latest.log"
+  vars:
+    lol: kek
+    name: May
+
+servers:
+  127.0.0.1: *srv
+  two:
+    address: mc.hypixel.com
+    port: 25565
+)==");
     using namespace mcshub;
     using namespace std;
-    config conf;
-    conf.load("config.yml");
-    stdout_log std_log(log_level::info);
-    log = &std_log;
+    settings conf = default_conf;
+    conf.load(input);
 
     log->info("address " + std::string(conf.address));
     log->info("port " + to_string(conf.port));
@@ -32,11 +59,10 @@ int main(int argc, char *argv[]) {
     log->info("log " + std::string(conf.log));
     log->info("verb " + log_lvl2str(conf.verb));
     log->info("default:");
-    print_record(conf.default_server);
+    //print_record(conf.default_server);
     log->info("servers:");
     for (const auto record : conf.servers) {
         log->info(record.first + ":");
-        print_record(record.second);
+        //print_record(record.second);
     }
-    return 0;
 }

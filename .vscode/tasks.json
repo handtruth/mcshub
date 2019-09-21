@@ -1,12 +1,11 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
+// Документацию по формату tasks.json см.
+    // по адресу https://go.microsoft.com/fwlink/?LinkId=733558
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build",
-            "type": "shell",
-            "command": "bash -c make",
+            "type": "meson",
+            "mode": "build",
             "problemMatcher": [
                 "$gcc"
             ],
@@ -16,9 +15,8 @@
             }
         },
         {
-            "label": "Test",
-            "type": "shell",
-            "command": "bash -c 'make test'",
+            "type": "meson",
+            "mode": "test",
             "problemMatcher": [
                 "$gcc"
             ],

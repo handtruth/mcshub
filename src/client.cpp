@@ -1,17 +1,44 @@
-#include "client.h"
+#include "client.hpp"
 
 #include <cstring>
+#include <cassert>
 #include <stdexcept>
 #include <system_error>
 
-#include "log.h"
-#include "hosts_db.h"
-#include "resources.h"
+#include <ekutils/log.hpp>
+
+#include "hosts_db.hpp"
+#include "resources.hpp"
 
 namespace mcshub {
 
+template <typename P>
+bool gate::paket_read(P & packet) {
+	std::int32_t id, size;
+	if (!head(id, size))
+		return false;
+	int s = packet.read(input.data(), size);
+	if (std::int32_t(s) != size)
+		throw bad_request("packet format error " + std::to_string(s) + " " + std::to_string(size));
+	input.move(size);
+	return true;
+}
+
+template <typename P>
+void gate::paket_write(const P & packet) {
+	std::size_t size = 10 + packet.size();
+	output.asize(size);
+	int s = packet.write(output.data() + output.size() - size, size);
+#	ifdef DEBUG
+		if (s < 0)
+			throw "IMPOSSIBLE SITUATION";
+#	endif
+	output.ssize(size - s);
+	send(); // Init transmission
+}
+
 bool gate::head(std::int32_t & id, std::int32_t & size) const {
-	int s = pakets::head(input.buff.data(), input.sz, size, id);
+	int s = pakets::head(input.data(), input.size(), size, id);
 	if (s == -1)
 		return false;
 	if (size < 0)
@@ -21,52 +48,48 @@ bool gate::head(std::int32_t & id, std::int32_t & size) const {
 	if (max_size != -1 && size > max_size)
 		throw bad_request("the maximum allowed packet size was reached");
 	size += s;
-	return size_t(size) <= input.sz;
+	return std::size_t(size) <= input.size();
+}
+
+void gate::kostilA() {
+	pakets::request req;
+	std::size_t sz = req.size() + 10;
+	input.asize(sz);
+	int r = req.write(input.data() + input.size() - sz, sz);
+	assert(r != -1);
+	input.ssize(sz - r);
+}
+
+void gate::kostilB(const std::string & nick) {
+	pakets::login login;
+	login.name() = nick;
+	std::size_t size = login.size() + 10;
+	input.asize(size);
+	int r = login.write(input.data() + input.size() - size, size);
+	assert(r != -1);
+	input.ssize(size - r);
 }
 
 void gate::tunnel(gate & other) {
-	size_t new_sz = input.sz + other.output.sz;
-	other.output.buff.probe(new_sz);
-	std::memcpy(other.output.buff.data() + other.output.sz, input.buff.data(), input.sz);
-	other.output.sz = new_sz;
-	input.sz = 0;
+	other.output.append(input.data(), input.size());
+	input.clear();
 	other.send();
 }
 
-void gate::read_async(byte_t bytes[], size_t size) {
-	if (size > input.sz) {
-		return;
-	}
-	std::memcpy(bytes, input.buff.data(), size);
-	input.buff.move(size);
-	input.sz -= size;
-}
-
-void gate::write_async(const byte_t bytes[], size_t size) {
-	output.buff.probe(size + output.sz);
-	std::memcpy(output.buff.data() + output.sz, bytes, size);
-	size_t new_sz;
-	new_sz = output.sz += size;
-	int written = sock.write(output.buff.data(), new_sz); // required for new EPOLLOUT event
-	output.buff.move(written);
-	output.sz -= written;
-}
-
 void gate::receive() {
-	size_t avail = sock.avail();
-	input.buff.probe(input.sz + avail);
-	sock.read(input.buff.data() + input.sz, avail);
-	input.sz += avail;
+	std::size_t avail = sock.avail();
+	std::size_t old = input.size();
+	input.asize(avail);
+	sock.read(input.data() + old, avail);
 }
 
 void gate::send() {
-	if (output.sz == 0)
+	if (output.size() == 0)
 		return;
-	int written = sock.write(output.buff.data(), output.sz);
+	int written = sock.write(output.data(), output.size());
 	if (written == -1)
 		return;
-	output.buff.move(written);
-	output.sz -= written;
+	output.move(written);
 }
 
 std::atomic<long> portal::globl_id = 0;
@@ -84,7 +107,7 @@ void portal::set_from_state_by_hs() {
 	}
 }
 
-const config::basic_record & portal::record(const conf_snap & conf) {
+const settings::basic_record & portal::record(const conf_snap & conf) {
 	const auto & servers = conf->servers;
 	std::string name = hs.address().c_str();
 	std::size_t name_sz = name.size();
@@ -98,12 +121,12 @@ const config::basic_record & portal::record(const conf_snap & conf) {
 	}
 	const auto & iter = servers.find(name);
 	if (iter != servers.end()) {
-		const config::server_record & r = iter->second;
+		const settings::server_record & r = iter->second;
 		if (is_fml && r.fml)
 			return *r.fml;
 		return r;
 	}
-	const config::server_record & r = conf->default_server;
+	const settings::server_record & r = conf->default_server;
 	if (is_fml && r.fml)
 		return *r.fml;
 	return r;
@@ -118,9 +141,9 @@ std::string portal::resolve_status() {
 		if (!record.status.empty())
 			log_warning("status file '" + record.status + "' not accessible");
 		if (record.mcsman)
-			return vars.resolve(res::sample_mcsman_status_json, res::sample_mcsman_status_json_len);
+			return vars.resolve(res::config::mcsman::status_json);
 		else
-			return vars.resolve(res::sample_default_status_json, res::sample_default_status_json_len);
+			return vars.resolve(res::config::fallback::status_json);
 	}
 	std::string content = std::string((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
 	return vars.resolve(content);
@@ -135,9 +158,9 @@ std::string portal::resolve_login() {
 		if (!record.status.empty())
 			log_warning("login file '" + record.login + "' not accessible");
 		if (record.mcsman)
-			return vars.resolve(res::sample_mcsman_login_json, res::sample_mcsman_login_json_len);
+			return vars.resolve(res::config::mcsman::login_json);
 		else
-			return vars.resolve(res::sample_default_login_json, res::sample_default_login_json_len);
+			return vars.resolve(res::config::fallback::login_json);
 	}
 	std::string content = std::string((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
 	return vars.resolve(content);
@@ -177,15 +200,15 @@ void portal::from_handshake() {
 			to_s = state_t::connect;
 			from_s = state_t::wait;
 			log_verbose("attempt to connect to " + r.address + ":" + std::to_string(r.port));
-			using namespace actions;
-			poll.add(to.sock, in | out | rdhup | err | et, [this](descriptor &, std::uint32_t events) {
+			using namespace ekutils::actions;
+			poll.add(to.sock, in | out | rdhup | err | et, [this](auto &, std::uint32_t events) {
 				on_to_event(events);
 			});
-			poll.later(std::chrono::milliseconds { conf->timeout }, [this]() {
+			timeout = poll.later(std::chrono::milliseconds { conf->timeout }, [this]() {
 				on_timeout();
 			});
 			return;
-		} catch (const dns_error &) {
+		} catch (const ekutils::dns_error &) {
 
 		}
 	}
@@ -263,6 +286,7 @@ void portal::process_to_request() {
 void portal::to_send_new_hs() {
 	pakets::handshake new_hs = hs;
 	to.paket_write(new_hs);
+	assert(poll.refuse(timeout));
 	to_s = state_t::proxy;
 	from_s = (hs.state() == 1) ? state_t::proxy : state_t::login;
 	process_to_request();
@@ -273,11 +297,12 @@ void portal::to_proxy() {
 	to.tunnel(from);
 }
 
-portal::portal(tcp_socket_d && sock, event & p) :
+portal::portal(ekutils::tcp_socket_d && sock, ekutils::epoll_d & p) :
 	id(globl_id++), from(std::move(sock)), poll(p), rec(std::ref(conf->default_server)),
 	vars(main_vars, srv_vars, f_vars, hs, env_vars) {}
 
 void portal::on_from_event(std::uint32_t events) {
+	using namespace ekutils;
 	try {
 		if (events & actions::rdhup) {
 			// Just disconnect event from client
@@ -309,6 +334,7 @@ void portal::on_from_event(std::uint32_t events) {
 
 void portal::on_to_event(std::uint32_t events) {
 	try {
+		using namespace ekutils;
 		if (events & actions::rdhup) {
 			// Just disconnect event from backend server
 			disconnect();

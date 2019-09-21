@@ -2,24 +2,18 @@
 
 mkdir -p dep
 cd dep
-if [ ! -z "$TARGET" ]; then
-	yaml_cpp=${TARGET}-yaml-cpp
-else
-	yaml_cpp=yaml-cpp
-fi
+
+yaml_cpp=${TARGET}-yaml_cpp
+
 if [ -f "$yaml_cpp.dep" ]; then
 	echo "Yaml-cpp is installed, ommiting..."
 else
-	echo "Downloading yaml-cpp dependency..."
-	wget -q https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-$yaml_cpp_version.tar.gz
-	tar -zxf yaml-cpp-$yaml_cpp_version.tar.gz
-	mv yaml-cpp-yaml-cpp-$yaml_cpp_version $yaml_cpp
 	echo "Building yaml-cpp..."
-	mkdir $yaml_cpp/lib
-	cd $yaml_cpp/lib
-	cmake -DYAML_CPP_BUILD_TESTS=OFF ..
+	mkdir -p lib/$TARGET
+	cd lib/$TARGET
+	cmake -DYAML_CPP_BUILD_TESTS=OFF ../../yaml_cpp
 	make
-	cd ../..
+	cd -
 	touch "$yaml_cpp.dep"
 fi
 echo "All the dependencies has been installed"

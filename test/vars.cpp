@@ -1,17 +1,18 @@
-#include "test.h"
-#include "response_props.h"
-#include "uuid.h"
+#include "test.hpp"
+#include "response_props.hpp"
+#include <ekutils/uuid.hpp>
 #include <cstring>
+#include <ekutils/log.hpp>
 
 const char * sneacky = "666 ${ lol } 777";
 
-int main() {
+test {
 	using namespace mcshub;
-	int l = find_closing_bracket<'{'>("{ 894h {fde } gfd}  }");
+	int l = ekutils::find_closing_bracket<'{'>("{ 894h {fde } gfd}  }");
 	assert_equals(18, l);
 	const char * stringa = "              lol kek chburek                ";
-	mcshub::size_t stringa_len = std::strlen(stringa);
-	trim_string(stringa, stringa_len);
+	std::size_t stringa_len = std::strlen(stringa);
+	ekutils::trim_string(stringa, stringa_len);
 	assert_equals(std::string("lol kek chburek"), std::string(stringa, stringa_len));
 	pakets::handshake hs;
 	hs.address() = "nowhere.com";
@@ -26,11 +27,10 @@ int main() {
 	std::string c4 = man.resolve("lava $$$hs:port${hs:state}${}$ ${   hs:address} $");
 	assert_equals("lava $255550{ NULL }$ nowhere.com $", c4);
 	std::string c5 = man.resolve("kaka $uuid makaka");
-	log->debug(c5);
+	log_debug(c5);
 	srand(65443);
 	for (int i = 0; i < 10; i++) {
-		std::string id = uuid::random();
-		log->debug("uuid example: " + id);
+		std::string id = ekutils::uuid::random();
+		log_debug("uuid example: " + id);
 	}
-	return 0;
 }

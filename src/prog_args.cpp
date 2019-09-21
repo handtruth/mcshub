@@ -1,4 +1,4 @@
-#include "prog_args.h"
+#include "prog_args.hpp"
 
 #include <cstring>
 #include <stdexcept>

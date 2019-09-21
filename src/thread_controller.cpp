@@ -1,38 +1,36 @@
-#include "thread_controller.h"
+#include "thread_controller.hpp"
 
 #include <stdexcept>
 
-#include "settings.h"
+#include "settings.hpp"
 
 namespace mcshub {
 
-worker::worker() {
-	working = true;
+worker::worker() : working(true) {
 	conf_snap c;
-	listener.listen(c->address, c->port);
-	//listener.set_reusable();
+	listener.listen(c->address, c->port, ekutils::tcp_flags::reuse_port);
 	listener.start();
-	poll.add(listener, [this](descriptor & fd, std::uint32_t events) {
+	poll.add(listener, [this](ekutils::descriptor & fd, std::uint32_t events) {
 		on_accept(fd, events);
 	});
 	events.set_non_block();
-	using namespace actions;
-	poll.add(events, in | out | et, [this](descriptor & fd, std::uint32_t events) {
+	using namespace ekutils::actions;
+	poll.add(events, in | out | et, [this](ekutils::descriptor & fd, std::uint32_t events) {
 		on_event(fd, events);
 	});
 	task = std::async(std::launch::async, [this]() { job(); });
 }
 
-void worker::on_accept(descriptor &, std::uint32_t) {
+void worker::on_accept(ekutils::descriptor &, std::uint32_t) {
 	auto & client = clients.emplace_front(listener.accept(), poll);
 	log_verbose("new client " + std::string(client.sock().remote_endpoint()));
-	using namespace actions;
 	auto & sock = client.sock();
 	sock.set_non_block();
 	const auto & it = clients.cbegin();
 	std::hash<std::thread::id> hasher;
 	log_debug("client " + std::string(sock.remote_endpoint()) + " is on thread #" + std::to_string(hasher(std::this_thread::get_id())));
-	poll.add(sock, in | out | et | err | rdhup, [this, &client, it](descriptor & fd, std::uint32_t events) {
+	using namespace ekutils::actions;
+	poll.add(sock, in | out | et | err | rdhup, [this, &client, it](ekutils::descriptor &, std::uint32_t events) {
 		client.on_from_event(events);
 		if (client.is_disconnected()) {
 			log_verbose("client " + std::string(client.sock().remote_endpoint()) + " disconnected");
@@ -41,9 +39,9 @@ void worker::on_accept(descriptor &, std::uint32_t) {
 	});
 }
 
-void worker::on_event(descriptor &, std::uint32_t e) {
+void worker::on_event(ekutils::descriptor &, std::uint32_t e) {
 	log_debug("worker event occurs");
-	if (e & actions::in) {
+	if (e & ekutils::actions::in) {
 		switch (events.read()) {
 			case worker_events::event_t::noop:
 				break;
@@ -64,7 +62,7 @@ void worker::job() {
 	log_debug("thread spawned");
 	while (working) {
 		try {
-			poll.pull(-1);
+			poll.wait(-1);
 		} catch (...) {}
 	}
 }
@@ -74,16 +72,16 @@ std::future<void> & worker::stop() {
 	return task;
 }
 
-thread_controller::thread_controller() {
-	conf_snap c;
-	workers = std::vector<worker>(c->threads);
-}
+thread_controller::thread_controller() :
+	workers(std::vector<worker>(conf_snap()->threads)) {}
 
 void thread_controller::terminate() {
 	std::vector<std::reference_wrapper<std::future<void>>> futures;
-	for (worker & w : workers) {
+	//std::transform(workers.begin(), workers.end(), futures.begin(), [](worker & w) -> auto & {
+	//	return w.stop();
+	//});
+	for (worker & w : workers)
 		futures.push_back(w.stop());
-	}
 	for (auto & future : futures) {
 		future.get().wait();
 	}

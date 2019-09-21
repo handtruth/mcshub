@@ -1,0 +1,3 @@
+option('link_type', type : 'combo', choices : ['static', 'shared'], value : 'static')
+option('run_args', type : 'array', value : [])
+option('systemd', type: 'boolean', value : false)

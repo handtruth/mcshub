@@ -1,9 +1,9 @@
-#include "response_props.h"
+#include "response_props.hpp"
 
 #include <cstdlib>
 #include <fstream>
 
-#include "uuid.h"
+#include <ekutils/uuid.hpp>
 
 namespace mcshub {
 
@@ -35,7 +35,7 @@ std::string server_vars::operator[](const std::string & name) const {
 
 std::string main_vars_t::operator[](const std::string & name) const {
 	if (name == "uuid") {
-		return uuid::random();
+		return ekutils::uuid::random();
 	} else
 		return "{ NULL }";
 }

@@ -1,0 +1,12 @@
+[submodule "cpp-res"]
+	path = subprojects/cpp-res
+	url = ../../ktlo/cpp-res.git
+[submodule "yaml-cpp"]
+	path = subprojects/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "paket-cpp"]
+	path = subprojects/paket-cpp
+	url = ../paket-cpp.git
+[submodule "ekutils"]
+	path = subprojects/ekutils
+	url = ../ekutils.git

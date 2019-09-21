@@ -1,4 +1,4 @@
-#include "mc_pakets.h"
+#include "mc_pakets.hpp"
 
 namespace mcshub {
 
