@@ -1,16 +1,17 @@
 FROM alpine:latest AS tools
-RUN apk --no-cache --no-progress add build-base vim coreutils cmake bash
+RUN apk --no-cache --no-progress add build-base ninja coreutils cmake git python3
 
 FROM tools AS build
 ADD . /mcshub
 WORKDIR /mcshub
-RUN ./configure && make
+RUN meson -Dprefix=`pwd`/out -Dbuildtype=release -Doptimization=3 --cross-file=./devcontainer/meson/cross/x86_64-alpine-linux-musl build
+    && cd build && ninja && ninja install
 
 FROM alpine:latest
-COPY --from=build /mcshub/out/mcshub /usr/local/bin/mcshub
-RUN mkdir /mcshub && apk --no-cache --no-progress add libstdc++
+COPY --from=build /mcshub/out/bin/mcshub /usr/local/bin/mcshub
+RUN [ "apk", "--no-cache", "--no-progress", "add", "libstdc++" ]
 WORKDIR /mcshub
 VOLUME /mcshub
 EXPOSE 25565/tcp
-LABEL maintainer="ktlo@handtruth.com"
+LABEL maintainer="ktlo <ktlo@handtruth.com>"
 ENTRYPOINT [ "mcshub" ]

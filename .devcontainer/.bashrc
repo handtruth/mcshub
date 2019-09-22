@@ -5,3 +5,5 @@ umask 022
 export LS_OPTIONS='--color=auto'
 eval "`dircolors`"
 alias ls='ls $LS_OPTIONS'
+alias editor=code
+export EDITOR=code

@@ -1,0 +1,13 @@
+## v1.2.0 - 2019-09-22
+### Added
+- Added support for development inside a Docker container using Visual Studio Code
+- Added common configuration for Visual Studio Code
+- Staging feature: cli interface
+
+### Changed
+- Moved part of sources to ekutils and paket-cpp projects
+- Now resource files are included with cpp-res tool
+- Changed build system. Now MCSHub uses Meson.
+
+### Fixed
+- Several memory leaks
