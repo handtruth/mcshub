@@ -14,7 +14,7 @@ COPY --from=build /mcshub/out/bin/mcping /usr/local/bin/mcping
 RUN [ "apk", "--no-cache", "--no-progress", "add", "libstdc++" ]
 VOLUME /mcshub
 WORKDIR /mcshub
-HEALTHCHECK [ "mcping", "localhost" ]
+HEALTHCHECK CMD [ "mcping", "localhost" ]
 EXPOSE 25565/tcp
 LABEL maintainer="ktlo <ktlo@handtruth.com>"
 ENTRYPOINT [ "mcshub" ]
