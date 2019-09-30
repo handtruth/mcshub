@@ -5,6 +5,6 @@ RUN [ "apk", "--no-cache", "--no-progress", "add", "libstdc++" ]
 VOLUME /mcshub
 WORKDIR /mcshub
 EXPOSE 25565/tcp
-HEALTHCHECK CMD [ "mcping", "localhost" ]
+HEALTHCHECK CMD [ "mcping", "localhost", "ping ]
 LABEL maintainer="ktlo <ktlo@handtruth.com>"
 ENTRYPOINT [ "mcshub" ]

@@ -302,7 +302,7 @@ void portal::to_proxy() {
 
 portal::portal(ekutils::tcp_socket_d && sock, ekutils::epoll_d & p) :
 	id(globl_id++), from(std::move(sock)), poll(p), rec(std::ref(conf->default_server)),
-	vars(main_vars, srv_vars, f_vars, hs, env_vars) {}
+	vars(main_vars, srv_vars, f_vars, i_vars, hs, env_vars) {}
 
 void portal::on_from_event(std::uint32_t events) {
 	using namespace ekutils;

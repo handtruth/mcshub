@@ -64,7 +64,7 @@ class portal {
 	img_vars i_vars;
 	conf_snap conf;
 	std::reference_wrapper<const settings::basic_record> rec;
-	vars_manager<main_vars_t, server_vars, file_vars, pakets::handshake, env_vars_t> vars;
+	vars_manager<main_vars_t, server_vars, file_vars, img_vars, pakets::handshake, env_vars_t> vars;
 	enum class state_t {
 		handshake, connect, wait, status_fake, login_fake, login, proxy, proxy_stable, ping
 	} from_s = state_t::handshake, to_s;
