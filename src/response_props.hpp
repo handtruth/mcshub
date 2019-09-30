@@ -6,6 +6,7 @@
 #include <vector>
 #include <variant>
 #include <array>
+#include <functional>
 
 #include <ekutils/parse_essentials.hpp>
 
@@ -15,7 +16,15 @@ namespace mcshub {
 
 struct file_vars final {
 	static constexpr const char * name = "file";
-	std::string srv_name = ".";
+	std::reference_wrapper<const std::string> srv_name;
+	file_vars();
+	std::string operator[](const std::string & name) const;
+};
+
+struct img_vars final {
+	static constexpr const char * name = "img";
+	std::reference_wrapper<const std::string> srv_name;
+	img_vars();
 	std::string operator[](const std::string & name) const;
 };
 

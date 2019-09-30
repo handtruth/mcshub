@@ -58,8 +58,10 @@ class portal {
 	gate from, to;
 	ekutils::epoll_d & poll;
 	pakets::handshake hs;
+	std::string server_name;
 	server_vars srv_vars;
 	file_vars f_vars;
+	img_vars i_vars;
 	conf_snap conf;
 	std::reference_wrapper<const settings::basic_record> rec;
 	vars_manager<main_vars_t, server_vars, file_vars, pakets::handshake, env_vars_t> vars;

@@ -1,3 +1,12 @@
+## v1.3.0 - 2019-09-30
+### Added
+- mcping utility. It allows you to ping and fetch JSON status response from any Minecraft Java Server.
+- img namespace in response variables. Now it is possible to use ${ img:icon.png } for favicon field in JSON response object.
+
+### Fixed
+- file namespace now resolves files from server directory, as it was planned.
+
+
 ## v1.2.0 - 2019-09-22
 ### Added
 - Added support for development inside a Docker container using Visual Studio Code

@@ -10,9 +10,11 @@ RUN meson -Dprefix=`pwd`/out -Dbuildtype=release -Doptimization=3 build \
 
 FROM alpine:latest
 COPY --from=build /mcshub/out/bin/mcshub /usr/local/bin/mcshub
+COPY --from=build /mcshub/out/bin/mcping /usr/local/bin/mcping
 RUN [ "apk", "--no-cache", "--no-progress", "add", "libstdc++" ]
-WORKDIR /mcshub
 VOLUME /mcshub
+WORKDIR /mcshub
+HEALTHCHECK [ "mcping", "localhost" ]
 EXPOSE 25565/tcp
 LABEL maintainer="ktlo <ktlo@handtruth.com>"
 ENTRYPOINT [ "mcshub" ]
