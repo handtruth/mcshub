@@ -17,7 +17,9 @@ test {
 	pakets::handshake hs;
 	hs.address() = "nowhere.com";
 	hs.port() = 25555;
-	vars_manager man = make_vars_manager(main_vars, env_vars, hs);
+	img_vars i_vars;
+	std::ofstream("img_vars_f.txt") << "text";
+	vars_manager man = make_vars_manager(main_vars, env_vars, hs, i_vars);
 	std::string c1 = man.resolve("lol ${ hs:port } kek");
 	assert_equals("lol 25555 kek", c1);
 	std::string c2 = man.resolve("kek $hs:address.lol");
@@ -28,6 +30,8 @@ test {
 	assert_equals("lava $255550{ NULL }$ nowhere.com $", c4);
 	std::string c5 = man.resolve("kaka $uuid makaka");
 	log_debug(c5);
+	std::string c6 = man.resolve("image ${img:/img_vars_f.txt} end");
+	assert_equals("image data:image/png;base64,dGV4dA== end", c6);
 	srand(65443);
 	for (int i = 0; i < 10; i++) {
 		std::string id = ekutils::uuid::random();

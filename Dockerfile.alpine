@@ -1,8 +1,10 @@
 FROM alpine:latest
 ADD dist/x86_64-alpine-linux-musl/bin/mcshub /usr/local/bin/mcshub
-RUN apk --no-cache --no-progress add libstdc++
-WORKDIR /mcshub
+ADD dist/x86_64-alpine-linux-musl/bin/mcping /usr/local/bin/mcping
+RUN [ "apk", "--no-cache", "--no-progress", "add", "libstdc++" ]
 VOLUME /mcshub
+WORKDIR /mcshub
 EXPOSE 25565/tcp
+HEALTHCHECK [ "mcping", "localhost" ]
 LABEL maintainer="ktlo <ktlo@handtruth.com>"
 ENTRYPOINT [ "mcshub" ]

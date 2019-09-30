@@ -109,7 +109,8 @@ void portal::set_from_state_by_hs() {
 
 const settings::basic_record & portal::record(const conf_snap & conf) {
 	const auto & servers = conf->servers;
-	std::string name = hs.address().c_str();
+	server_name = hs.address().c_str();
+	std::string & name = server_name;
 	std::size_t name_sz = name.size();
 	const std::string & domain = conf->domain;
 	std::size_t domain_sz = domain.size();
@@ -119,6 +120,8 @@ const settings::basic_record & portal::record(const conf_snap & conf) {
 	if (name_sz > domain_sz && !std::strcmp(name.c_str() + name_sz - domain_sz, domain.c_str())) {
 		name.resize(name_sz - domain_sz);
 	}
+	f_vars.srv_name = server_name;
+	i_vars.srv_name = server_name;
 	const auto & iter = servers.find(name);
 	if (iter != servers.end()) {
 		const settings::server_record & r = iter->second;
