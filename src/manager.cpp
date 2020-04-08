@@ -116,7 +116,7 @@ manager::manager() {
 
 void manager::on_line() {
 	std::string line;
-	while (input.read_line(line)) {
+	while (input.readln(line)) {
 		try {
 			std::unordered_map<std::string, ekutils::cli_form_ptr> forms;
 			root.process(line.c_str(), forms);

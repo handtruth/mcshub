@@ -40,9 +40,11 @@ Options:
       --timeout                    set timeout
   -m, --mcsman                     enable extra functionality for MCSMan
       --port TCP_PORT              set listen port for MCSHub. This option will be
-                                   overriden by port number in configuration file.
+                                   overriden by port number in configuration file
       --default-port DEFAULT_PORT  set the default TCP port number for all server
-                                   records in configuration file.
+                                   records in configuration file
+      --no-dns-cache               disable dns cache by default. This option will be
+                                   overriden by dns_cache option in configuration file
 )==";
 		return EXIT_SUCCESS;
 	}
@@ -67,7 +69,8 @@ Options:
 	ekutils::signal_d signal { sig::abort, sig::broken_pipe, sig::termination, sig::segmentation_fail };
 	ekutils::epoll_d poll;
 	settings::init_listener(poll);
-	log_verbose("current version -- " + config::version);
+	using namespace std::string_literals;
+	log_verbose("current version -- "s + config::version);
 	log_verbose("start server on " + c->address + ':' + std::to_string(c->port));
 	c.reset();
 	thread_controller controller;
