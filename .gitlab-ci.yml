@@ -142,7 +142,7 @@ Package:x86_64-linux-gnu: &package
   variables:
     TARGET: x86_64-linux-gnu
   script:
-    - meson -Dprefix=`pwd`/dist/$TARGET -Dbuildtype=release -Doptimization=3 --cross-file=$TARGET package/$TARGET
+    - meson -Dprefix=`pwd`/dist/$TARGET -Ddefault_library=static -Dbuildtype=release -Doptimization=3 --cross-file=$TARGET package/$TARGET
     - cd package/$TARGET
     - ninja
     - ninja install
