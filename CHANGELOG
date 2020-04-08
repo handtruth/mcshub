@@ -1,6 +1,6 @@
 ## v1.3.1 - 2020-02-06
 ### Fixed
-- MCSMan records swapped in the past due DNS cache.
+- MCSMan records swap due DNS cache.
 
 ### Added
 - Option 'dns_cache' (default true). If false performs dns request every time otherwise caches dns requests.
