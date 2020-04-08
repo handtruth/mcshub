@@ -99,6 +99,8 @@ struct settings {
 
 	std::unordered_map<std::string, server_record> servers;
 
+	bool dns_cache;
+
 	static void initialize();
 	static void init_listener(ekutils::epoll_d & poll);
 	void load(const std::string & path);

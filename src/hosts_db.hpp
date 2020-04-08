@@ -8,7 +8,8 @@
 
 namespace mcshub {
 
-void connect(ekutils::tcp_socket_d & socket, const std::string & hostname, std::uint16_t port);
+void connect(ekutils::tcp_socket_d & socket, bool cache,
+    const std::string & hostname, std::uint16_t port);
 
 }
 

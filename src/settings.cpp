@@ -142,7 +142,8 @@ void settings::initialize() {
 			false, // mcsman
 			{}, // vars
 		},
-		{} // servers
+		{}, // servers
+		!arguments.no_dns_cache // dns_cache
 	};
 	default_record = {
 		std::string(), //address
@@ -421,6 +422,8 @@ void operator>>(const YAML::Node & node, settings & conf) {
 			conf.servers[record.first.as<std::string>()] = server;
 		}
 	}
+	if (auto dns_cache = node["dns_cache"])
+		conf.dns_cache = dns_cache.as<bool>();
 }
 
 void settings::load(const std::string & path) {

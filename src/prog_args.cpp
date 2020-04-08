@@ -75,6 +75,8 @@ void arguments_t::parse(int argn, const char ** args) {
                 help = true;
             else if (is_arg_name(arg, "cli"))
                 cli = true;
+            else if (is_arg_name(arg, "no-dns-cache"))
+                no_dns_cache = true;
             else
                 throw std::invalid_argument("urecognized argument '" + std::string(arg) + "'");
         } else if (*curr == '-') {

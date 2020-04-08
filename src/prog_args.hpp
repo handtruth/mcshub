@@ -26,6 +26,7 @@ public:
 	bool version = false;
 	bool help = false;
 	bool cli = false;
+	bool no_dns_cache = false;
 
 	std::vector<std::string> other;
 

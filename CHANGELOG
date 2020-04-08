@@ -1,3 +1,10 @@
+## v1.3.1 - 2020-02-06
+### Fixed
+- MCSMan records swapped in the past due DNS cache.
+
+### Added
+- Option 'dns_cache' (default true). If false performs dns request every time otherwise caches dns requests.
+
 ## v1.3.0 - 2019-09-30
 ### Added
 - mcping utility. It allows you to ping and fetch JSON status response from any Minecraft Java Server.

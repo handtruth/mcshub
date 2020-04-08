@@ -199,7 +199,7 @@ void portal::from_handshake() {
 	rec = r;
 	if (!r.address.empty() && r.port) {
 		try {
-			connect(to.sock, r.address, r.port);
+			connect(to.sock, conf->dns_cache && !r.mcsman, r.address, r.port);
 			to_s = state_t::connect;
 			from_s = state_t::wait;
 			log_verbose("attempt to connect to " + r.address + ":" + std::to_string(r.port));
