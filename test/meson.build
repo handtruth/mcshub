@@ -3,7 +3,8 @@ test_names = [
 #  'config',
   'paket',
   'status',
-  'vars'
+  'vars',
+  'fetch_status'
 ]
 
 test_files = []

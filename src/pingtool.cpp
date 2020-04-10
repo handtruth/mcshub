@@ -11,7 +11,7 @@
 #include <ekutils/expandbuff.hpp>
 
 #include "config.hpp"
-#include "mc_pakets.hpp"
+#include "sclient.hpp"
 
 struct host_error : public std::runtime_error {
 	explicit host_error(const std::string & message) : std::runtime_error(message) {}
@@ -22,27 +22,26 @@ struct host_info {
 	std::string port;
 	host_info(const char * str) {
 		switch (*str) {
-		case '\0':
-			return;
-		case '[': {
-			const char * begin = str;
-			while (*str != ']') {
-				if (*str == '\0')
-					throw host_error("ipv6 square bracket '[' not closed");
-				str++;
+			case '\0':
+				return;
+			case '[': {
+				const char * begin = str;
+				while (*str != ']') {
+					if (*str == '\0')
+						throw host_error("ipv6 square bracket '[' not closed");
+					str++;
+				}
+				host.append(begin + 1, str - begin - 1);
+				if (*str == ']')
+					str++;
+				break;
 			}
-			host.append(begin + 1, str - begin - 1);
-			if (*str == ']')
-				str++;
-			break;
-		}
-		default: {
-			const char * begin = str;
-			while (*str != ':' && *str) str++;
-			host.append(begin, str - begin);
-			
-			break;
-		}
+			default: {
+				const char * begin = str;
+				while (*str != ':' && *str) str++;
+				host.append(begin, str - begin);
+				break;
+			}
 		}
 		if (*str) {
 			str++;
@@ -68,7 +67,7 @@ enum class acts_enum {
 	status, ping
 };
 
-void entry(ekutils::tcp_socket_d & sock, host_info & host, acts_enum act);
+void entry(host_info & host, acts_enum act);
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -106,11 +105,7 @@ int main(int argc, char *argv[]) {
 	}
 	try {
 		host_info host(argv[1]);
-
-		ekutils::tcp_socket_d sock;
-		auto cons = ekutils::connection_info::resolve(host.host, host.port);
-		sock.open(cons);
-		entry(sock, host, act);
+		entry(host, act);
 	} catch (const std::exception & e) {
 		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;
@@ -118,61 +113,21 @@ int main(int argc, char *argv[]) {
 	return EXIT_SUCCESS;
 }
 
-void ensure_write(ekutils::out_stream & output, const ekutils::byte_t bytes[], std::size_t length) {
-	for (std::size_t written = 0;
-		written != length;
-		written += output.write(bytes + written, length - written));
-}
-
-void ensure_read(ekutils::in_stream & input, ekutils::byte_t bytes[], std::size_t length) {
-	for (std::size_t received = 0;
-		received != length;
-		received += input.read(bytes + received, length - received));
-}
-
-template <typename P>
-void read_paket(P & paket, ekutils::in_stream_d & input, ekutils::expandbuff & buff) {
+void entry(host_info & host, acts_enum act) {
 	using namespace mcshub;
-	int s;
-	while ((s = paket.read(buff.data(), buff.size())) == -1) {
-		buff.asize(1);
-		int s = input.read(buff.data() + buff.size() - 1, 1);
-		assert(s == 1);
-		std::size_t avail = input.avail();
-		buff.asize(avail);
-		s = input.read(buff.data() + buff.size() - avail, avail);
-		assert(std::size_t(s) == avail);
+	sclient client(host.host, host.port);
+	switch (act) {
+		case acts_enum::status: {
+			pakets::response res = client.status(host.host);
+			std::cout << res.message() << std::endl;
+			break;
+		}
+		case acts_enum::ping: {
+			client.status(host.host);
+			using namespace std::chrono;
+			std::chrono::milliseconds time = client.ping();
+			std::cout << time.count() << "ms" << std::endl;
+			break;
+		}
 	}
-	buff.move(s);
-}
-
-void entry(ekutils::tcp_socket_d & sock, host_info & host, acts_enum act) {
-	using namespace mcshub;
-	pakets::handshake hs;
-	hs.version() = -1;
-	hs.address() = host.host;
-	hs.port() = sock.remote_endpoint().port();
-	hs.state() = 1;
-	std::array<ekutils::byte_t, 1000> send;
-	std::size_t tosend = hs.write(send);
-	ensure_write(sock, send.data(), tosend);
-	pakets::request req;
-	tosend = req.write(send);
-	ensure_write(sock, send.data(), tosend);
-	pakets::response resp;
-	ekutils::expandbuff buff;
-	read_paket(resp, sock, buff);
-	if (act == acts_enum::status) {
-		std::cout << resp.message() << std::endl;
-		return;
-	}
-	pakets::pinpong pp;
-	pp.payload() = random();
-	tosend = pp.write(send);
-	auto start = std::chrono::system_clock::now();
-	ensure_write(sock, send.data(), tosend);
-	read_paket(pp, sock, buff);
-    auto end = std::chrono::system_clock::now();
-	auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	std::cout << millis.count() << "ms" << std::endl;
 }
