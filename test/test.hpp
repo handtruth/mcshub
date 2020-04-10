@@ -111,10 +111,10 @@ struct {
         ::tests::assert.assert_ex([&]() fun, __FILE__, __LINE__)
 
 #define assert_true(value) \
-        ::tests::assert.assert_tr(value, __FILE__, __LINE__, #value)
+        ::tests::assert.assert_tr(static_cast<bool>(value), __FILE__, __LINE__, #value)
 
 #define assert_false(value) \
-        ::tests::assert.assert_fa(value, __FILE__, __LINE__, #value)
+        ::tests::assert.assert_fa(static_cast<bool>(value), __FILE__, __LINE__, #value)
 
 }
 

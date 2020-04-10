@@ -28,7 +28,7 @@ void record_form::fill(const std::map<std::string, std::string> & values) {
 		} else if (entry.first == "port") {
 			auto port = std::stoi(entry.second);
 			if (port > std::numeric_limits<std::uint16_t>::max() || port < 0)
-				throw config_exception("record.port", "port number isn't in range [0..65535]");
+				throw std::runtime_error("record.port: port number isn't in range [0..65535]");
 			record.port = static_cast<std::uint16_t>(port);
 		} else if (entry.first == "status") {
 			record.status = entry.second;
@@ -112,6 +112,9 @@ manager::manager() {
 			}
 		}
 	}, "set a server record");
+	root.action("ping", [](auto &) {
+		std::cerr << "pong" << std::endl;
+	}, "print pong");
 }
 
 void manager::on_line() {

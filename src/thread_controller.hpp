@@ -46,6 +46,7 @@ public:
 };
 
 struct thread_controller final {
+	static std::uint16_t real_port;
 	std::vector<worker> workers;
 	thread_controller();
 	void terminate();

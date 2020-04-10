@@ -126,11 +126,12 @@ void settings::initialize() {
 	default_conf = {
 		arguments.address, // address
 		arguments.port, // port
-		unsigned(get_nprocs()), // threads
+		arguments.threads == std::numeric_limits<unsigned>::max() ?
+			unsigned(get_nprocs()) : arguments.threads, // threads
 		arguments.max_packet_size, // max_packet_size
 		arguments.timeout, // timeout
 		std_log, // log
-		ekutils::log_level::info, // verb
+		arguments.verb, // verb
 		arguments.distributed, // distributed
 		arguments.domain, // domain
 		{ // default

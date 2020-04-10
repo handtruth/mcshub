@@ -5,7 +5,7 @@ RUN apk --no-cache --no-progress add build-base ninja coreutils cmake git python
 FROM tools AS build
 ADD . /mcshub
 WORKDIR /mcshub
-RUN meson -Dprefix=`pwd`/out -Dbuildtype=release -Doptimization=3 build \
+RUN meson -Dprefix=`pwd`/out -Dbuildtype=release -Ddefault_library=static -Doptimization=3 build \
     && cd build && ninja && ninja install
 
 FROM alpine:latest

@@ -18,27 +18,27 @@ namespace mcshub {
 
 struct settings {
 	std::string address;
-	std::uint16_t port;
-	unsigned int threads;
-	int max_packet_size;
-	unsigned long timeout;
+	std::uint16_t port = 0;
+	unsigned int threads = 0;
+	int max_packet_size = 0;
+	unsigned long timeout = 0;
 
 	std::string log;
-	ekutils::log_level verb;
+	ekutils::log_level verb = ekutils::log_level::none;
 
-	bool distributed;
+	bool distributed = false;
 
 	std::string domain;
 
 	struct basic_record {
 		std::string address;
-		std::uint16_t port;
+		std::uint16_t port = 0;
 
 		std::string status;
 		std::string login;
 
-		bool drop;
-		bool mcsman;
+		bool drop = false;
+		bool mcsman = false;
 
 		std::unordered_map<std::string, std::string> vars;
 	};
@@ -99,7 +99,7 @@ struct settings {
 
 	std::unordered_map<std::string, server_record> servers;
 
-	bool dns_cache;
+	bool dns_cache = false;
 
 	static void initialize();
 	static void init_listener(ekutils::epoll_d & poll);

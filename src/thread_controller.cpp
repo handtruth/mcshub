@@ -6,10 +6,13 @@
 
 namespace mcshub {
 
+std::uint16_t thread_controller::real_port = 0;
+
 worker::worker() : working(true) {
 	conf_snap c;
-	listener.listen(c->address, c->port, ekutils::tcp_flags::reuse_port);
+	listener.listen(c->address, c->port | thread_controller::real_port, ekutils::tcp_flags::reuse_port);
 	listener.start();
+	thread_controller::real_port = listener.local_endpoint().port();
 	poll.add(listener, [this](ekutils::descriptor & fd, std::uint32_t events) {
 		on_accept(fd, events);
 	});

@@ -3,8 +3,10 @@ sources = files([
   'hosts_db.cpp',
   'manager.cpp',
   'mc_pakets.cpp',
+  'mcshub.cpp',
   'prog_args.cpp',
   'response_props.cpp',
+  'sclient.cpp',
   'settings.cpp',
   'thread_controller.cpp'
 ])

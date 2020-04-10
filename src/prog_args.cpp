@@ -27,7 +27,7 @@ bool is_arg_name(const char * arg, const char * name) {
 }
 
 template <typename T>
-T assert_arg_range(int x, const char * name) {
+T assert_arg_range(long x, const char * name) {
     constexpr T max_value = std::numeric_limits<T>::max();
     if (x < 0 || x > max_value)
         throw std::invalid_argument(std::string("'") + name + "' value do not fit in range [0:" + std::to_string(max_value) + "]");
@@ -77,6 +77,10 @@ void arguments_t::parse(int argn, const char ** args) {
                 cli = true;
             else if (is_arg_name(arg, "no-dns-cache"))
                 no_dns_cache = true;
+            else if (is_arg_name(arg, "threads"))
+                threads = assert_arg_range<unsigned>(std::atoi(get_arg_value(it, end)), "threads");
+			else if (is_arg_name(arg, "verb"))
+				verb = ekutils::str2loglvl(get_arg_value(it, end));
             else
                 throw std::invalid_argument("urecognized argument '" + std::string(arg) + "'");
         } else if (*curr == '-') {

@@ -5,6 +5,8 @@
 #include <cinttypes>
 #include <vector>
 
+#include <ekutils/log.hpp>
+
 namespace mcshub {
 
 class arguments_t final {
@@ -27,6 +29,8 @@ public:
 	bool help = false;
 	bool cli = false;
 	bool no_dns_cache = false;
+	unsigned threads = std::numeric_limits<unsigned>::max();
+	ekutils::log_level verb = ekutils::log_level::info;
 
 	std::vector<std::string> other;
 
