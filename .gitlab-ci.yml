@@ -18,7 +18,6 @@ Restore:x86_64-linux-gnu: &restore
     TARGET: x86_64-linux-gnu
   script:
     - meson -Db_coverage=true build/$TARGET --cross-file=$TARGET
-  tags: ["default"]
   artifacts:
     paths:
       - build
@@ -42,7 +41,6 @@ Build:x86_64-linux-gnu: &build
   script:
     - cd build/$TARGET
     - ninja
-  tags: ["default"]
   artifacts:
     paths:
       - build
@@ -73,7 +71,6 @@ Test:x86_64-linux-gnu: &test
   script:
     - cd build/$TARGET
     - meson test --print-errorlogs --wrap='valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes'
-  tags: ["default"]
   artifacts:
     paths:
       - build
@@ -96,6 +93,9 @@ Test:arm-linux-gnueabihf:
 Test:x86_64-alpine-linux-musl:
   <<: *test
   image: reg.handtruth.com/roots/cpp-meson/build:alpine
+  script:
+    - cd build/$TARGET
+    - meson test --print-errorlogs
   variables:
     TARGET: x86_64-alpine-linux-musl
   dependencies:
@@ -111,7 +111,6 @@ Coverage: &coverage
     - ninja coverage-text
     - cat meson-logs/coverage.txt
   coverage: '/^TOTAL\s+\S+\s+\S+\s+(\d+\.?\d+)%/'
-  tags: ["default"]
   artifacts:
     paths:
       - build
@@ -129,7 +128,6 @@ Check:
     - cd build/$TARGET
     - ninja cppcheck
   coverage: '/^TOTAL\s+\S+\s+\S+\s+(\d+\.?\d+)%/'
-  tags: ["default"]
   artifacts:
     paths:
       - build/x86_64-linux-gnu/cppcheck.log
@@ -146,7 +144,6 @@ Package:x86_64-linux-gnu: &package
     - cd package/$TARGET
     - ninja
     - ninja install
-  tags: ["default"]
   artifacts:
     paths:
       - dist
