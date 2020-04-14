@@ -70,7 +70,6 @@ Options:
 	using ekutils::sig;
 	ekutils::signal_d signal { sig::abort, sig::broken_pipe, sig::termination, sig::segmentation_fail };
 	ekutils::epoll_d poll;
-	settings::init_listener(poll);
 	log_verbose("current version -- " + config::build);
 	thread_controller controller;
 	log_verbose("start server on " + c->address + ':' + std::to_string(thread_controller::real_port));

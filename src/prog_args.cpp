@@ -8,6 +8,8 @@ namespace mcshub {
 
 arguments_t arguments;
 
+void check_domain(std::string & name);
+
 const char * get_arg_value(char const **& it, const char ** end) {
     const char * curr = *it;
     while(char c = *(curr++)) {
@@ -49,9 +51,10 @@ void arguments_t::parse(int argn, const char ** args) {
                 login = get_arg_value(it, end);
             else if (is_arg_name(arg, "default-dir"))
                 default_srv_dir = get_arg_value(it, end);
-            else if (is_arg_name(arg, "domain"))
+            else if (is_arg_name(arg, "domain")) {
                 domain = get_arg_value(it, end);
-            else if (is_arg_name(arg, "mcsman"))
+                check_domain(domain);
+            } else if (is_arg_name(arg, "mcsman"))
                 mcsman = true;
             else if (is_arg_name(arg, "install"))
                 install = true;

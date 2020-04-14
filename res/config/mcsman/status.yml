@@ -1,0 +1,5 @@
+description:
+  - 'Server '
+  - text: $var:name
+    color: gold
+  - ' is down right now'

@@ -69,5 +69,5 @@
 #servers:
   #example:
     #address: "example.org"
-    #status: "./example/status.json"
-    #login: "./example/login.json"
+    #status: !file "status.yml"
+    #login: !file "login.yml"

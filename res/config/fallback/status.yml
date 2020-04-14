@@ -1,0 +1,3 @@
+description:
+  text: Server ${hs:address} doesn't exists!
+  color: red

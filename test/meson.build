@@ -1,10 +1,13 @@
 test_names = [
   'args',
-#  'config',
+  'distributed_test',
+  'config',
   'paket',
   'status',
   'vars',
-  'fetch_status'
+  'fetch_status',
+  'yaml',
+  'test_strparts'
 ]
 
 test_files = []
@@ -16,6 +19,3 @@ foreach test_name : test_names
 endforeach
 
 sh = find_program('sh')
-
-#TODO:
-#test('serve100clients', sh, args : [files('serve100clients.sh'), exe])

@@ -12,8 +12,8 @@ void print_record(const mcshub::settings::server_record & record) {
     static auto tab = string("\t");
     log->info(tab + "address " + record.address);
     log->info(tab + "port " + to_string(record.port));
-    log->info(tab + "status " + record.status);
-    log->info(tab + "login " + record.login);
+    log->info(tab + "status " + record.status.resolve());
+    log->info(tab + "login " + record.login.resolve());
     string result = tab + "vars: { ";
     for (auto item : record.vars) {
         result += item.first + "=" + item.second + ' ';

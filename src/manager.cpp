@@ -6,6 +6,7 @@
 #include <ekutils/signal_d.hpp>
 
 #include "settings.hpp"
+#include "status_builder.hpp"
 
 namespace mcshub {
 
@@ -22,6 +23,11 @@ ekutils::cli_form_ptr record_form::instance() {
 }
 
 void record_form::fill(const std::map<std::string, std::string> & values) {
+	{
+		const auto & itname = values.find("name");
+		if (itname != values.end())
+			name = itname->second;
+	}
 	for (auto & entry : values) {
 		if (entry.first == "address") {
 			record.address = entry.second;
@@ -31,11 +37,11 @@ void record_form::fill(const std::map<std::string, std::string> & values) {
 				throw std::runtime_error("record.port: port number isn't in range [0..65535]");
 			record.port = static_cast<std::uint16_t>(port);
 		} else if (entry.first == "status") {
-			record.status = entry.second;
+			record.status = build_status(YAML::Load(entry.second), name.empty() ? "." : name);
 		} else if (entry.first == "login") {
-			record.login = entry.second;
+			record.login = build_chat(YAML::Load(entry.second), name.empty() ? "." : name);
 		} else if (entry.first == "name") {
-			name = entry.second;
+			// do nothing
 		} else {
 			throw ekutils::cli_form_error("option \"" + entry.first + "\" does not exists");
 		}
