@@ -14,6 +14,8 @@
 #include <ekutils/epoll_d.hpp>
 #include <ekutils/log.hpp>
 
+#include "strparts.hpp"
+
 namespace mcshub {
 
 struct settings {
@@ -34,8 +36,8 @@ struct settings {
 		std::string address;
 		std::uint16_t port = 0;
 
-		std::string status;
-		std::string login;
+		strparts status;
+		strparts login;
 
 		bool drop = false;
 		bool mcsman = false;
@@ -63,8 +65,8 @@ struct settings {
 		server_record() = default;
 		server_record(const basic_record & other) : basic_record(other) {}
 		server_record(basic_record && other) : basic_record(std::move(other)) {}
-		server_record(const std::string & address, std::uint16_t port, const std::string & status,
-			const std::string & login, bool drop, bool mcsman,
+		server_record(const std::string & address, std::uint16_t port, const strparts & status,
+			const strparts & login, bool drop, bool mcsman,
 			const std::unordered_map<std::string, std::string> & vars) :
 				basic_record { address, port, status, login, drop, mcsman, vars } {}
 		server_record(const server_record & other) :
@@ -102,7 +104,6 @@ struct settings {
 	bool dns_cache = false;
 
 	static void initialize();
-	static void init_listener(ekutils::epoll_d & poll);
 	void load(const std::string & path);
 	void load(std::istream & input);
 	static void static_install();

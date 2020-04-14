@@ -11,6 +11,7 @@
 #include <iostream>
 #include <functional>
 #include <vector>
+#include <cstdio>
 
 namespace std {
     inline string to_string(const std::string & str) {
@@ -32,7 +33,6 @@ struct {
         if (actual != expect) {
             std::string message = std::string(file) + ":" + std::to_string(line) + ": assertion failed (\"" + std::to_string(expect) +
             "\" expected, got \"" + std::to_string(actual) + "\")";
-            std::cout << "test failed: " << message << std::endl;
             throw assertion_error(message);
         } else
             success++;
@@ -42,7 +42,6 @@ struct {
         if (actual == expect) {
             std::string message = std::string(file) + ":" + std::to_string(line) + ": assertion failed (\"" + std::to_string(expect) +
             "\" equals to \"" + std::to_string(actual) + "\")";
-            std::cout << "test failed: " << message << std::endl;
             throw assertion_error(message);
         } else
             success++;
@@ -54,13 +53,8 @@ struct {
         } catch (const E & e) {
             success++;
             return;
-        } catch (...) {
-            std::cout << "test failed: " << std::string(file) << ':' << std::to_string(line)
-                << ": cought unexpected exception type." << std::endl;
-            throw;
         }
         std::string message = std::string(file) + ":" + std::to_string(line) + ": no exception cought.";
-        std::cout << "test failed: " << message << std::endl;
         throw assertion_error(message);
     }
     template <typename F>
@@ -72,8 +66,31 @@ struct {
             return;
         }
         std::string message = std::string(file) + ":" + std::to_string(line) + ": no exception cought.";
-        std::cout << "test failed: " << message << std::endl;
         throw assertion_error(message);
+    }
+    template <typename ...F>
+    void assert_an(const char * file, std::size_t line, F... checks) {
+        bool passed = 0;
+        std::string collected_message;
+        int count = sizeof...(checks);
+
+        auto f = [&](const auto & operand) -> void {
+            int prev_success = success;
+            try {
+                operand();
+                passed = true;
+            } catch (const assertion_error & e) {
+                success = prev_success;
+                collected_message = "\n\tclause #" + std::to_string(count) + ": " + e.what() + collected_message;
+            }
+            count--;
+        };
+        [](...){}((f(std::forward<F>(checks)), 0)...);
+        if (!passed) {
+            std::string message = std::string(file) + ":" + std::to_string(line) +
+                ": no assertion passed." + collected_message;
+            throw assertion_error(message);
+        }
     }
     void assert_tr(bool value, const char * file, std::size_t line, const char * expression) {
         if (value) {
@@ -110,11 +127,16 @@ struct {
 #define assert_fails(fun) \
         ::tests::assert.assert_ex([&]() fun, __FILE__, __LINE__)
 
+#define assert_any(...) \
+        ::tests::assert.assert_an(__FILE__, __LINE__, [&]() __VA_ARGS__)
+
+#define assert_or , [&]()
+
 #define assert_true(value) \
-        ::tests::assert.assert_tr(static_cast<bool>(value), __FILE__, __LINE__, #value)
+        ::tests::assert.assert_tr(value, __FILE__, __LINE__, #value)
 
 #define assert_false(value) \
-        ::tests::assert.assert_fa(static_cast<bool>(value), __FILE__, __LINE__, #value)
+        ::tests::assert.assert_fa(value, __FILE__, __LINE__, #value)
 
 }
 
@@ -122,8 +144,17 @@ void test_function();
 
 int main() {
     std::cout << "entering test..." << std::endl;
-    test_function();
-    std::cout << "success: " << tests::assert.success << " assertions passed";
+    try {
+        test_function();
+        std::cout << "success: " << tests::assert.success << " assertions passed";
+        return 0;
+    } catch (const tests::assertion_error & e) {
+        std::cout << "assertion error: " << e.what() << std::endl;
+        return 2;
+    } catch (const std::exception & e) {
+        std::cout << "fatal error: " << typeid(e).name() << ": " << e.what() << std::endl;
+        return 1;
+    }
 }
 
 // LCOV_EXCL_STOP

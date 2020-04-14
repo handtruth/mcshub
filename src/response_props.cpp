@@ -115,4 +115,6 @@ std::string main_vars_t::operator[](const std::string & name) const {
 
 main_vars_t main_vars;
 
+vars_base::~vars_base() {}
+
 }

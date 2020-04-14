@@ -1,9 +1,9 @@
 resources = files([
-  'config/fallback/login.json',
-  'config/fallback/status.json',
+  'config/fallback/login.yml',
+  'config/fallback/status.yml',
   'config/mcshub.yml',
-  'config/mcsman/login.json',
-  'config/mcsman/status.json'
+  'config/mcsman/login.yml',
+  'config/mcsman/status.yml'
 ])
 
 res_header = custom_target(

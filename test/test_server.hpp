@@ -4,6 +4,8 @@
 #   define TEST_SERVER_HEAD
 #endif
 
+// LCOV_EXCL_START
+
 #include <unistd.h>
 #include <sys/mount.h>
 #include <filesystem>
@@ -56,8 +58,10 @@ YAML::Node base_record2yaml(const settings::basic_record & record) {
 		return YAML::Node("drop");
 	YAML::Node node;
 	insert_str(node, address, record);
-	insert_str(node, login, record);
-	insert_str(node, status, record);
+	if (!record.login.empty())
+		node["login"] = record.login.src();
+	if (!record.status.empty())
+		node["status"] = record.status.src();
 	insert_int(node, port, record);
 	if (!record.vars.empty()) {
 		YAML::Node vars;
@@ -211,3 +215,5 @@ mcshub::mcshub(const arguments_t & args, const std::shared_ptr<confset> & dir, i
 }
 
 } // namespace mcshub
+
+// LCOV_EXCL_STOP

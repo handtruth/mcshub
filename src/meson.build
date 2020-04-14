@@ -8,6 +8,9 @@ sources = files([
   'response_props.cpp',
   'sclient.cpp',
   'settings.cpp',
+  'srv_status.cpp',
+  'status_builder.cpp',
+  'strparts.cpp',
   'thread_controller.cpp'
 ])
 

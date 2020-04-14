@@ -8,7 +8,7 @@
 #include <ekutils/log.hpp>
 
 #include "hosts_db.hpp"
-#include "resources.hpp"
+#include "strparts.hpp"
 
 namespace mcshub {
 
@@ -117,9 +117,12 @@ const settings::basic_record & portal::record(const conf_snap & conf) {
 	bool is_fml = name.size() != hs.address().size();
 	if (name[name_sz - 1] == '.')
 		name.pop_back();
-	if (name_sz > domain_sz && !std::strcmp(name.c_str() + name_sz - domain_sz, domain.c_str())) {
-		name.resize(name_sz - domain_sz);
+	if (name_sz > domain_sz && name[name_sz - domain_sz - 1] == '.'
+		&& !std::strcmp(name.c_str() + name_sz - domain_sz, domain.c_str())) {
+		name.resize(name_sz - domain_sz - 1);
 	}
+	log_debug("domain: " + domain + ", name: " + name);
+
 	f_vars.srv_name = server_name;
 	i_vars.srv_name = server_name;
 	const auto & iter = servers.find(name);
@@ -138,35 +141,13 @@ const settings::basic_record & portal::record(const conf_snap & conf) {
 std::string portal::resolve_status() {
 	const auto & record = rec.get();
 	srv_vars.vars = &record.vars;
-	std::ifstream file(record.status);
-	log_debug("open status file: " + record.status);
-	if (!file) {
-		if (!record.status.empty())
-			log_warning("status file '" + record.status + "' not accessible");
-		if (record.mcsman)
-			return vars.resolve(res::config::mcsman::status_json);
-		else
-			return vars.resolve(res::config::fallback::status_json);
-	}
-	std::string content = std::string((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
-	return vars.resolve(content);
+	return record.status.resolve(vars);
 }
 
 std::string portal::resolve_login() {
 	const auto & record = rec.get();
 	srv_vars.vars = &record.vars;
-	std::ifstream file(record.login);
-	log_debug("open login file: " + record.login);
-	if (!file) {
-		if (!record.status.empty())
-			log_warning("login file '" + record.login + "' not accessible");
-		if (record.mcsman)
-			return vars.resolve(res::config::mcsman::login_json);
-		else
-			return vars.resolve(res::config::fallback::login_json);
-	}
-	std::string content = std::string((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
-	return vars.resolve(content);
+	return record.login.resolve(vars);
 }
 
 void portal::process_from_request() {

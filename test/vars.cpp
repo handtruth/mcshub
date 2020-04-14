@@ -1,37 +1,164 @@
-#include "test.hpp"
-#include "response_props.hpp"
+#include <filesystem>
+#include <fstream>
+
 #include <ekutils/uuid.hpp>
-#include <cstring>
 #include <ekutils/log.hpp>
 
-const char * sneacky = "666 ${ lol } 777";
+#include "config.hpp"
+#include "response_props.hpp"
+#include "status_builder.hpp"
+
+#include "test.hpp"
+
+const std::string & context = "there_slcow";
+
+#define TEXT_IMG "text: not image"
 
 test {
 	using namespace mcshub;
-	int l = ekutils::find_closing_bracket<'{'>("{ 894h {fde } gfd}  }");
-	assert_equals(18, l);
-	const char * stringa = "              lol kek chburek                ";
-	std::size_t stringa_len = std::strlen(stringa);
-	ekutils::trim_string(stringa, stringa_len);
-	assert_equals(std::string("lol kek chburek"), std::string(stringa, stringa_len));
+	using namespace std::string_literals;
+	ekutils::log = new ekutils::stdout_log(ekutils::log_level::debug);
 	pakets::handshake hs;
-	hs.address() = "nowhere.com";
-	hs.port() = 25555;
-	img_vars i_vars;
-	std::ofstream("img_vars_f.txt") << "text";
-	vars_manager man = make_vars_manager(main_vars, env_vars, hs, i_vars);
-	std::string c1 = man.resolve("lol ${ hs:port } kek");
-	assert_equals("lol 25555 kek", c1);
-	std::string c2 = man.resolve("kek $hs:address.lol");
-	assert_equals("kek nowhere.com.lol", c2);
-	std::string c3 = man.resolve("zero $$moro");
-	assert_equals("zero $moro", c3);
-	std::string c4 = man.resolve("lava $$$hs:port${hs:state}${}$ ${   hs:address} $");
-	assert_equals("lava $255550{ NULL }$ nowhere.com $", c4);
-	std::string c5 = man.resolve("kaka $uuid makaka");
-	log_debug(c5);
-	std::string c6 = man.resolve("image ${img:/img_vars_f.txt} end");
-	assert_equals("image data:image/png;base64,dGV4dA== end", c6);
+	hs.version() = 959;
+	hs.port() = 3566;
+	hs.address() = "example.com";
+	std::unordered_map<std::string, std::string> pairs;
+	pairs["name"] = "TESTIFICATE";
+	img_vars img;
+	server_vars svars;
+	svars.vars = &pairs;
+	file_vars fvars;
+	fvars.srv_name = context;
+	
+	img.srv_name = context;
+	auto vars = make_vars_manager(main_vars, img, svars, fvars);
+	std::filesystem::create_directory(context);
+	std::ofstream(context + "/icon.txt") << TEXT_IMG;
+	
+	{
+	auto strp = build_status(YAML::Load(R"===(
+description:
+  - 'Server '
+  - text: ${hs:address}
+    color: gold
+    bold: yes
+  - ' is down right now'
+favicon: !img icon.txt
+modinfo:
+  type: FML
+  modList:
+    - modid: ComputerCraft
+      version: "1.2.3"
+)==="), context);
+	std::string compressed = strp.resolve_partial(vars).resolve(make_vars_manager(hs));
+	assert_equals(R"===({"description":["Server ",{"text":"example.com","color":"gold","bold":true}," is down right now"],"favicon":"data:image/png;base64,dGV4dDogbm90IGltYWdl","modinfo":{"type":"FML","modList":[{"modid":"ComputerCraft","version":"1.2.3"}]},"version":{"name":")===" + config::project + "-" + config::version + R"===(","protocol":-1},"players":{"sample":[],"max":20,"online":0}})===",
+		compressed);
+	}
+
+	{
+	auto strp = build_status(YAML::Load(R"===(
+refs: !ignore
+  ktlo: &ktlo
+    name: Ktlo
+    id: popka
+
+random: !ignore ignore
+
+description: !ignore ignore
+version: !ignore ignore
+players:
+  sample:
+    - *ktlo
+    - name: Rou7e
+      id: zopka
+)==="), context);
+	std::string compressed = strp.resolve(vars);
+	assert_equals(R"===({"players":{"sample":[{"name":"Ktlo","id":"popka"},{"name":"Rou7e","id":"zopka"}],"max":20,"online":2}})===",
+		compressed);
+	}
+
+	{
+	auto strp = build_status(YAML::Load(R"===(
+description: !ignore ignore
+players: !ignore ignore
+version:
+  name: CraftBaget
+  protocol: 1337
+)==="), context);
+	std::string compressed = strp.resolve(vars);
+	assert_equals(R"===({"version":{"name":"CraftBaget","protocol":1337}})===",
+		compressed);
+	}
+
+	{
+	auto strp = build_status(YAML::Load(R"===(
+description: {"selector":"Selector","text":"Text","bold":on,"italic":on,"strikethrough":on,"underlined":on,"obfuscated":off,"color":"dark_red"}
+players: !ignore ignore
+version: !ignore ignore
+)==="), context);
+	std::string compressed = strp.resolve(vars);
+	assert_equals(R"===({"description":{"selector":"Selector","text":"Text","bold":true,"italic":true,"strikethrough":true,"underlined":true,"obfuscated":false,"color":"dark_red"}})===",
+		compressed);
+	}
+
+	{
+	auto strp = build_status(YAML::Load(R"===(
+description: !ignore ignore
+players: !ignore ignore
+version: !ignore ignore
+some: !uknown popka
+)==="), context);
+	std::string compressed = strp.resolve(vars);
+	assert_equals(R"===({"some":"popka"})===",
+		compressed);
+	}
+
+	{
+	auto strp = build_status(YAML::Load(R"===(
+description: !ignore ignore
+players: !ignore ignore
+version: !ignore ignore
+content: !file icon.txt
+include: $file:icon.txt
+)==="), context);
+	std::string compressed = strp.resolve(vars);
+	assert_equals(R"===({"content":{"text":"not image"},"include":"text: not image"})===",
+		compressed);
+	}
+
+	{
+	auto strp = build_status(YAML::Load(R"===({
+    "version": {
+        "name": "1.8.7",
+        "protocol": 47
+    },
+    "players": {
+        "max": 100,
+        "online": 5,
+        "sample": [
+            {
+                "name": "thinkofdeath",
+                "id": "4566e69f-c907-48ee-8d71-d7ba5aa00d20"
+            }
+        ]
+    },	
+    "description": {
+        "text": "Hello world"
+    },
+    "favicon": "data:image/png;base64,<data>"
+})==="), context);
+	std::string compressed = strp.resolve(vars);
+	assert_equals(R"===({"version":{"name":"1.8.7","protocol":47},"players":{"max":100,"online":5,"sample":[{"name":"thinkofdeath","id":"4566e69f-c907-48ee-8d71-d7ba5aa00d20"}]},"description":{"text":"Hello world"},"favicon":"data:image/png;base64,<data>"})===",
+		compressed);
+	}
+
+	assert_fails_with(response_type_error, {
+	build_status(YAML::Load(R"===(
+version:
+  protocol: -3lol45
+)==="), context);
+	});
+
 	srand(65443);
 	for (int i = 0; i < 10; i++) {
 		std::string id = ekutils::uuid::random();
