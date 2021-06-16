@@ -12,10 +12,9 @@
 #include <ekutils/lazy.hpp>
 
 #include "status_builder.hpp"
-#include "prog_args.hpp"
+#include "mcshub_arguments.hpp"
 #include "response_props.hpp"
 #include "resources.hpp"
-#include "resources.ext.hpp"
 
 namespace fs = std::filesystem;
 
@@ -30,7 +29,7 @@ const fs::path cdir = ".";
 namespace resps {
 	template <std::size_t N>
 	YAML::Node load(const std::array<byte_t, N> & data) {
-		return YAML::Load(res::str_of(data));
+		return YAML::Load(std::string(res::view(data)));
 	}
 
 	namespace mcsman {
@@ -61,8 +60,8 @@ void put_main_conf_file();
 inline settings::server_record conf_record_mcsman(const std::string & name) {
 	const std::string domain = name + "-mcs";
 	return {
-		domain, arguments.default_port, resps::mcsman::status, resps::mcsman::login,
-		false, true, { { "name", name } }
+		domain, resps::mcsman::status, resps::mcsman::login,
+		false, { { "name", name } }
 	};
 }
 
@@ -126,22 +125,18 @@ void settings::initialize() {
 		put_main_conf_file();
 	default_conf = {
 		arguments.address, // address
-		arguments.port, // port
-		arguments.threads == std::numeric_limits<unsigned>::max() ?
-			unsigned(get_nprocs()) : arguments.threads, // threads
+		arguments.threads == -1 ? unsigned(get_nprocs()) : static_cast<unsigned>(arguments.threads), // threads
 		arguments.max_packet_size, // max_packet_size
-		arguments.timeout, // timeout
+		static_cast<unsigned long>(arguments.timeout), // timeout
 		std_log, // log
 		arguments.verb, // verb
 		arguments.distributed, // distributed
 		arguments.domain, // domain
 		{ // default
 			"", // address
-			arguments.default_port, // port
 			resps::fallback::status, // status
 			resps::fallback::login, // login
 			arguments.drop, // drop
-			false, // mcsman
 			{}, // vars
 		},
 		{}, // servers
@@ -149,11 +144,9 @@ void settings::initialize() {
 	};
 	default_record = {
 		std::string(), //address
-		arguments.default_port, // port
 		resps::fallback::status, // status
 		resps::fallback::login, // login
 		false, // drop
-		false, // mcsman
 		{} //vars
 	};
 	auto c = std::make_shared<settings>(default_conf);
@@ -190,10 +183,6 @@ void fill_record(const YAML::Node & node, settings::basic_record & record, const
 		record.drop = false;
 	if (const auto address = node["address"])
 		record.address = address.as<std::string>();
-	if (const auto port = node["port"])
-		record.port = port.as<std::uint16_t>();
-	else
-		record.port = arguments.default_port;
 	for (const auto item : node["vars"])
 		record.vars[item.first.as<std::string>()] = item.second.as<std::string>();
 	if (const auto status = node["status"])
@@ -230,8 +219,6 @@ void fill_srv_record(const YAML::Node & node, settings::server_record & record, 
 void fill_settings(const YAML::Node & node, settings & conf) {
 	if (auto address = node["address"])
 		conf.address = address.as<std::string>();
-	if (auto port = node["port"])
-		conf.port = port.as<std::uint16_t>();
 	if (auto threads = node["threads"]) {
 		try {
 			conf.threads = threads.as<unsigned int>();
@@ -292,7 +279,7 @@ void settings::load(std::istream & input) {
 
 void put_main_conf_file() {
 	std::ofstream config_file(arguments.confname);
-	config_file << res::view_of(res::config::mcshub_yml);
+	config_file << res::view(res::config::mcshub_yml);
 	config_file.close();
 }
 
@@ -300,10 +287,10 @@ void settings::static_install() {
 	if (!fs::exists(arguments.default_srv_dir) && !fs::create_directory(arguments.default_srv_dir))
 		throw std::runtime_error("can't create directory");
 	std::ofstream status_file(arguments.default_srv_dir + '/' + arguments.status);
-	status_file << res::view_of(res::config::fallback::status_yml);
+	status_file << res::view(res::config::fallback::status_yml);
 	status_file.close();
 	std::ofstream login_file(arguments.default_srv_dir + '/' + arguments.login);
-	login_file << res::view_of(res::config::fallback::login_yml);
+	login_file << res::view(res::config::fallback::login_yml);
 	login_file.close();
 	put_main_conf_file();
 }

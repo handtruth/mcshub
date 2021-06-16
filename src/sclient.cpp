@@ -1,17 +1,27 @@
 #include "sclient.hpp"
 
+#include <ekutils/resolver.hpp>
+
 namespace mcshub {
 
 void sclient::read(std::size_t length) {
     in_buff.asize(length);
     auto ptr = in_buff.data() + in_buff.size() - length;
     for (std::size_t received = 0; received < length;
-        received += sock.read(ptr + received, length - received));
+        received += sock->read(ptr + received, length - received));
 }
 
 void sclient::write(const ekutils::byte_t data[], std::size_t length) {
     for (std::size_t received = 0; received < length;
-        received += sock.write(data + received, length - received));
+        received += sock->write(data + received, length - received));
+}
+
+sclient::sclient(const ekutils::uri & uri) : address(uri) {
+    reconnect();
+}
+
+sclient::sclient(const std::string & host, std::uint16_t port) : address("tcp://" + host + ':' + std::to_string(port)) {
+    reconnect();
 }
 
 void sclient::peek_head(std::size_t & size, std::int32_t & id) {
@@ -22,6 +32,11 @@ void sclient::peek_head(std::size_t & size, std::int32_t & id) {
         read(1);
     }
     size = static_cast<std::size_t>(actual) + sz;
+}
+
+void sclient::reconnect() {
+    auto targets = ekutils::net::resolve(ekutils::net::socket_types::stream, address, 25565);
+    sock = ekutils::net::connect_any(targets.begin(), targets.end());
 }
 
 pakets::response sclient::status(const std::string & name, std::uint16_t port) {

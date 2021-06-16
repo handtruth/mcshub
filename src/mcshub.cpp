@@ -5,8 +5,8 @@
 #include <ekutils/signal_d.hpp>
 
 #include "thread_controller.hpp"
-#include "manager.hpp"
-#include "prog_args.hpp"
+#include "cli.hpp"
+#include "mcshub_arguments.hpp"
 #include "settings.hpp"
 #include "config.hpp"
 
@@ -14,39 +14,7 @@ namespace mcshub {
 
 int entrypoint_internal(const char * exe, ekutils::delegate_base<void(void)> * after_start) {
 	if (arguments.help) {
-		std::cout << "Usage: " << exe << R"==( [options]
-Options:
-  -h, --help                       display this help message and exit
-  -v, --version                    print version number and exit
-      --confname CONFIG_NAME       change configuration file name (mcshub.yml default)
-      --status STATUS_FILE         change default status file name (status.json
-	                               default)
-      --login LOGIN_FILE           change default login file name (login.json default)
-  -i, --install                    install the default MCSHub configuration
-      --default-dir DEFAULT_DIR    specify name of a directory for the default entry
-                                   ("default" is the default)
-      --domian DOMAIN              specify domain name (the same option as in
-                                   mcshub.yml file). This option will be overriden
-                                   by "domain"field in mcshub.yml file
-  -d, --distributed                enable distributed MCSHub configuration
-      --drop                       drop if no server entry matches
-      --max-packet-size            set maximum allowed packet size for Minecraft
-                                   protocol
-      --timeout                    set timeout
-  -m, --mcsman                     enable extra functionality for MCSMan
-      --port TCP_PORT              set listen port for MCSHub. This option will be
-                                   overriden by port number in configuration file
-      --default-port DEFAULT_PORT  set the default TCP port number for all server
-                                   records in configuration file
-      --no-dns-cache               disable dns cache by default. This option will be
-                                   overriden by dns_cache option in configuration file
-      --verb LOG_LEVEL             set default verbose level to LOG_LEVEL. This option
-                                   will be overriden by 'verb' option in configuration
-                                   file. ("info" is the default value)
-  -t, --threads THREADS            number of working theads. (option 'threads' in
-                                   configuration file, default value equals to number
-                                   of parallel threads supported by CPU)
-)==";
+		std::cout << arguments.build_help(exe);
 		return EXIT_SUCCESS;
 	}
 	if (arguments.version) {
@@ -95,11 +63,11 @@ Options:
 				return;
 		}
 	});
-	manager manager;
+	cli commands;
 	ekutils::input.set_non_block();
 	if (arguments.cli)
-		poll.add(ekutils::input, [&manager](auto &, auto) {
-			manager.on_line();
+		poll.add(ekutils::input, [&commands](auto &, auto) {
+			commands.on_line();
 		});
 	if (after_start) {
 		(*after_start)();

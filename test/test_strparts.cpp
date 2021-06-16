@@ -10,8 +10,6 @@
 test {
 	using namespace mcshub;
 
-	ekutils::log = new ekutils::stdout_log(ekutils::log_level::debug);
-
 	pakets::handshake hs;
 	hs.address() = "nowhere.com";
 	hs.port() = 25555;

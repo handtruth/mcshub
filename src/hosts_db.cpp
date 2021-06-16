@@ -1,34 +1,37 @@
 #include "hosts_db.hpp"
 
 #include <unordered_map>
-#include <vector>
 
 #include <ekutils/log.hpp>
+#include <ekutils/resolver.hpp>
+
+#include "mcshub_arguments.hpp"
 
 namespace mcshub {
 
-std::unordered_map<std::string, std::vector<ekutils::connection_info>> hosts_db;
+typedef std::forward_list<ekutils::net::resolution> resolutions;
 
-const std::vector<ekutils::connection_info> & request_dns_cache(
-		const std::string & hostname, std::uint16_t port) {
-	const auto & iter = hosts_db.find(hostname);
+std::unordered_map<std::string, resolutions> hosts_db;
+
+inline resolutions resolve(const ekutils::uri & uri) {
+	return ekutils::net::resolve(ekutils::net::socket_types::stream, uri, static_cast<std::uint8_t>(arguments.default_port));
+}
+
+const resolutions & request_dns_cache(const std::string & address) {
+	const auto & iter = hosts_db.find(address);
 	if (iter == hosts_db.end()) {
-		log_verbose("new dns cache request for '" + hostname + "'");
-		const auto & addresses = hosts_db[hostname] = std::move(ekutils::connection_info::resolve(hostname, port));
-		return addresses;
+		log_verbose("new dns cache request for '" + address + "'");
+		const auto & addresses = hosts_db.emplace(address, resolve(address));
+		return addresses.first->second;
 	} else {
 		return iter->second;
 	}
 }
 
-void connect(ekutils::tcp_socket_d & socket, bool cache,
-		const std::string & hostname, std::uint16_t port) {
-	std::size_t l = hostname.length() - 1;
-	std::string name = (hostname[l] == '.') ? hostname.substr(0, l) : hostname;
-	if (cache)
-		socket.open(request_dns_cache(name, port), ekutils::tcp_flags::non_blocking);
-	else
-		socket.open(ekutils::connection_info::resolve(name, port), ekutils::tcp_flags::non_blocking);
+stream_sock connect(bool use_cache, const std::string & address) {
+	resolutions tmp = use_cache ? resolutions() : resolve(address);
+	const resolutions & targets = use_cache ? request_dns_cache(address) : tmp;
+	return ekutils::net::connect_any(targets.begin(), targets.end(), ekutils::net::socket_flags::non_block);
 }
 
 }

@@ -17,7 +17,6 @@ const std::string & context = "there_slcow";
 test {
 	using namespace mcshub;
 	using namespace std::string_literals;
-	ekutils::log = new ekutils::stdout_log(ekutils::log_level::debug);
 	pakets::handshake hs;
 	hs.version() = 959;
 	hs.port() = 3566;

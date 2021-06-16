@@ -7,3 +7,5 @@ eval "`dircolors`"
 alias ls='ls $LS_OPTIONS'
 alias editor=code
 export EDITOR=code
+
+alias utest='meson test --wrap="valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes"'

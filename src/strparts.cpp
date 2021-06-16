@@ -241,7 +241,7 @@ std::string strparts::resolve(const vars_base & vars) const {
 			const address_t & address = std::get<address_t>(part);
 			std::optional<std::string> opt = vars.get(address.ns, address.var);
 			const std::string & value = buffer.emplace_back(
-				std::move(opt.value_or("${"s + address.ns + ':' + address.var + "}"))
+				opt.value_or("${"s + address.ns + ':' + address.var + "}")
 			);
 			size += value.size();
 		}

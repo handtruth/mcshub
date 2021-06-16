@@ -1,0 +1,134 @@
+#include "cli.hpp"
+
+#include <iostream>
+#include <unistd.h>
+
+#include <ekutils/signal_d.hpp>
+
+#include "settings.hpp"
+#include "status_builder.hpp"
+
+namespace mcshub {
+
+struct record_form : public ekutils::cli_form {
+	std::string name;
+	settings::basic_record record = default_record;
+
+	static ekutils::cli_form_ptr instance();
+	virtual void fill(const std::map<std::string, std::string> & values) override;
+};
+
+ekutils::cli_form_ptr record_form::instance() {
+	return std::make_unique<record_form>();
+}
+
+void record_form::fill(const std::map<std::string, std::string> & values) {
+	{
+		const auto & itname = values.find("name");
+		if (itname != values.end())
+			name = itname->second;
+	}
+	for (auto & entry : values) {
+		if (entry.first == "address") {
+			record.address = entry.second;
+		} else if (entry.first == "status") {
+			record.status = build_status(YAML::Load(entry.second), name.empty() ? "." : name);
+		} else if (entry.first == "login") {
+			record.login = build_chat(YAML::Load(entry.second), name.empty() ? "." : name);
+		} else if (entry.first == "name") {
+			// do nothing
+		} else {
+			throw ekutils::cli_form_error("option \"" + entry.first + "\" does not exists");
+		}
+	}
+}
+
+void special_assign(settings::server_record & it, const settings::basic_record & other) {
+	auto fml = it.fml;
+	it = other;
+	it.fml = fml;
+}
+
+cli::cli() {
+	root.action("stop", [](auto &) {
+		kill(getpid(), ekutils::sig::termination);
+	}, "stop mcshub");
+	root.action("help", [this](auto &) {
+		for (auto & line : root.help())
+			std::cerr << line << std::endl;
+	}, "print help message");
+	auto & conf = *root.choice("conf");
+	conf.action("reload", [](auto &) {
+		reload_configuration();
+	}, "reload all configuration");
+	auto & conf_entry = *conf.option("scope", "scope", {
+		"default", "run"
+	})->choice();
+	conf_entry.word("domain", "domain")->action([](auto & forms) {
+		const auto & scope = form_as_word(forms, "scope");
+		auto domain = form_as_word(forms, "domain");
+		check_domain(domain);
+		if (scope == "default") {
+			default_conf.domain = domain;
+		} else if (scope == "run") {
+			// TODO
+		}
+	}, "set domain name suffix to each configuration");
+	conf_entry.word("timeout", "timeout")->action([](auto & forms) {
+		const auto & scope = form_as_word(forms, "scope");
+		unsigned long timeout = std::stoul(form_as_word(forms, "timeout"));
+		if (scope == "default") {
+			default_conf.timeout = timeout;
+		}
+	}, "set timeout");
+	auto & conf_entry_record = *conf_entry.option("record", "type", {
+		"default-auto", "default-fml", "auto", "fml"
+	})->choice();
+	conf_entry_record.form("set", "record", record_form::instance, {
+		{ "name", "<server_name>" },
+		{ "address", "[backend]" },
+		{ "port", "[number]" },
+		{ "status", "[status_response_path]" },
+		{ "login", "[login_response_path]" },
+	})->action([](auto & forms) {
+		std::string scope = form_as_word(forms, "scope");
+		if (scope == "default") {
+			const auto & type = form_as_word(forms, "type");
+			const auto & form = ekutils::get_form<record_form>(forms, "record");
+			if (type == "default-auto")
+				special_assign(default_conf.default_server, form.record);
+			else if (type == "default-fml")
+				default_conf.default_server.fml = form.record;
+			else {
+				if (form.name.empty())
+					throw ekutils::cli_form_error("empty record name");
+				auto & servers = default_conf.servers;
+				auto & record = (servers.find(form.name) == servers.end()) ?
+					servers.emplace(form.name, default_record).first->second :
+					servers[form.name];
+				if (type == "auto")
+					special_assign(record, form.record);
+				else if (type == "fml")
+					record.fml = form.record;
+			}
+		}
+	}, "set a server record");
+	root.action("ping", [](auto &) {
+		std::cerr << "pong" << std::endl;
+	}, "print pong");
+}
+
+void cli::on_line() {
+	std::string line;
+	while (input.readln(line)) {
+		try {
+			std::unordered_map<std::string, ekutils::cli_form_ptr> forms;
+			root.process(line.c_str(), forms);
+		} catch (const std::exception & e) {
+			std::cerr << e.what() << std::endl;
+		}
+		line.clear();
+	}
+}
+
+}

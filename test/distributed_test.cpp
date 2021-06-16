@@ -6,7 +6,6 @@
 using namespace mcshub;
 
 test {
-	ekutils::log = new ekutils::stdout_log(ekutils::log_level::debug);
 	auto args = test_arguments();
 	args.distributed = true;
 	args.domain = "mc.handtruth.com";
@@ -26,6 +25,6 @@ version: !ignore ignore
 	::mcshub::mcshub server(args, conf);
 	log_debug("Server started");
 	sclient client = server.client();
-	pakets::response resp = client.status("test.mc.handtruth.com");
+	pakets::response resp = client.status("test.mc.handtruth.com", 25565);
 	assert_equals(R"===({"description":"distributed is working"})===", resp.message());
 }

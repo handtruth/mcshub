@@ -20,9 +20,8 @@ namespace mcshub {
 
 struct settings {
 	std::string address;
-	std::uint16_t port = 0;
 	unsigned int threads = 0;
-	int max_packet_size = 0;
+	std::intmax_t max_packet_size = 0;
 	unsigned long timeout = 0;
 
 	std::string log;
@@ -34,13 +33,11 @@ struct settings {
 
 	struct basic_record {
 		std::string address;
-		std::uint16_t port = 0;
 
 		strparts status;
 		strparts login;
 
 		bool drop = false;
-		bool mcsman = false;
 
 		std::unordered_map<std::string, std::string> vars;
 	};
@@ -65,10 +62,10 @@ struct settings {
 		server_record() = default;
 		server_record(const basic_record & other) : basic_record(other) {}
 		server_record(basic_record && other) : basic_record(std::move(other)) {}
-		server_record(const std::string & address, std::uint16_t port, const strparts & status,
-			const strparts & login, bool drop, bool mcsman,
+		server_record(const std::string & address, const strparts & status,
+			const strparts & login, bool drop,
 			const std::unordered_map<std::string, std::string> & vars) :
-				basic_record { address, port, status, login, drop, mcsman, vars } {}
+				basic_record { address, status, login, drop, vars } {}
 		server_record(const server_record & other) :
 				basic_record(other) {
 			copy_fml(other.fml);

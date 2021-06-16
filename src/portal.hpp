@@ -1,57 +1,24 @@
-#ifndef _CLIENT_HEAD
-#define _CLIENT_HEAD
+#ifndef CLIENT_HEAD_QCXPBLLROBOJJWKJ
+#define CLIENT_HEAD_QCXPBLLROBOJJWKJ
 
 #include <future>
 #include <atomic>
 #include <cassert>
 
-#include <ekutils/expandbuff.hpp>
-#include <ekutils/socket_d.hpp>
+#include <ekutils/tcp_d.hpp>
 #include <ekutils/primitives.hpp>
 #include <ekutils/epoll_d.hpp>
+#include <ekutils/idgen.hpp>
 
+#include "gate.hpp"
 #include "settings.hpp"
 #include "mc_pakets.hpp"
 #include "response_props.hpp"
 
 namespace mcshub {
 
-using ekutils::byte_t;
-
-class bad_request : public std::runtime_error {
-public:
-	explicit bad_request(const std::string & message) : std::runtime_error(message) {}
-	explicit bad_request(const char * message) : std::runtime_error(message) {}
-};
-
-class gate {
-public:
-private:
-	ekutils::expandbuff input, output;
-public:
-	ekutils::tcp_socket_d sock;
-	gate() {}
-	explicit gate(ekutils::tcp_socket_d && socket) : sock(std::move(socket)) {}
-	bool head(std::int32_t & id, std::int32_t & size) const;
-	template <typename P>
-	bool paket_read(P & packet);
-	template <typename P>
-	void paket_write(const P & packet);
-	void kostilA();
-	void kostilB(const std::string & nick);
-	void tunnel(gate & other);
-	void receive();
-	void send();
-	std::size_t avail_read() const noexcept {
-		return input.size();
-	}
-	std::size_t avail_write() const noexcept {
-		return output.size();
-	}
-};
-
 class portal {
-	static std::atomic<long> globl_id;
+	static ekutils::idgen<long> globl_id;
 	std::string nickname;
 	long id;
 	int timeout;
@@ -86,12 +53,12 @@ class portal {
 	void to_send_new_hs();
 	void to_proxy();
 public:
-	portal(ekutils::tcp_socket_d && sock, ekutils::epoll_d & p);
+	portal(stream_sock && sock, ekutils::epoll_d & p);
 	bool is_disconnected() const noexcept {
 		return disconnected;
 	}
-	ekutils::tcp_socket_d & sock() {
-		return from.sock;
+	ekutils::net::stream_socket_d & sock() {
+		return *from.sock;
 	}
 	void on_from_event(std::uint32_t events);
 	void on_to_event(std::uint32_t events);
@@ -102,4 +69,4 @@ private:
 
 } // namespace mcshub
 
-#endif
+#endif // CLIENT_HEAD_QCXPBLLROBOJJWKJ
