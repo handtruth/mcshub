@@ -1,6 +1,6 @@
 FROM alpine:latest AS tools
-RUN apk --no-cache --no-progress add build-base ninja coreutils cmake git python3 \
-    && python3 -m pip install meson
+RUN apk --no-cache --no-progress add build-base ninja coreutils cmake git python3 py3-pip cppcheck \
+    && pip3 install meson
 
 FROM tools AS build
 ADD . /mcshub

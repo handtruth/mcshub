@@ -52,7 +52,7 @@ If you using Debian like OS, you can install everything you
 need, with *apt* like this:
 ```sh
 apt install -y cmake g++ python3 python3-pip \
-  python3-setuptools python3-wheel ninja-build \
+  python3-setuptools python3-wheel ninja-build cppcheck \
   && python3 -m pip install --user meson
 ```
 

@@ -176,8 +176,9 @@ AlpineDockerImage:
     - docker push $IMAGE_TAG
     - docker rmi $IMAGE_TAG
   tags: ["docker"]
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH == "release-2.0.0"
+      when: always
   dependencies:
     - Package:x86_64-alpine-linux-musl
 
@@ -194,8 +195,9 @@ Deploy:
     - docker rm mcsnet-mcshub
     - docker restart mcsman
   tags: ["deploy"]
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH == "release-2.0.0"
+      when: always
   cache:
     paths: []
   dependencies: []
