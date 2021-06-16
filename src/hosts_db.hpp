@@ -6,10 +6,11 @@
 
 #include <ekutils/socket_d.hpp>
 
+#include "gate.hpp"
+
 namespace mcshub {
 
-void connect(ekutils::tcp_socket_d & socket, bool cache,
-    const std::string & hostname, std::uint16_t port);
+stream_sock connect(bool use_cache, const std::string & address);
 
 }
 

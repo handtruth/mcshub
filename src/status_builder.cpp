@@ -98,7 +98,7 @@ public:
 		put_node_internal(node, fs::path("/"), resolver);
 	}
 	template <char a, char b>
-	friend class json_block;
+	friend struct json_block;
 };
 
 template <char open, char close>

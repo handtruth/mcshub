@@ -47,12 +47,16 @@ Build:x86_64-linux-gnu: &build
     expire_in: 2 hrs
   dependencies:
     - Restore:x86_64-linux-gnu
+  needs:
+    - Restore:x86_64-linux-gnu
 
 Build:arm-linux-gnueabihf:
   <<: *build
   variables:
     TARGET: arm-linux-gnueabihf
   dependencies:
+    - Restore:arm-linux-gnueabihf
+  needs:
     - Restore:arm-linux-gnueabihf
 
 Build:x86_64-alpine-linux-musl:
@@ -62,6 +66,8 @@ Build:x86_64-alpine-linux-musl:
     TARGET: x86_64-alpine-linux-musl
   dependencies:
     - Restore:x86_64-alpine-linux-musl
+  needs:
+    - Restore:x86_64-alpine-linux-musl
 
 Test:x86_64-linux-gnu: &test
   stage: test
@@ -70,12 +76,17 @@ Test:x86_64-linux-gnu: &test
     MESON_TESTTHREADS: 1
   script:
     - cd build/$TARGET
-    - meson test --print-errorlogs --wrap='valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes'
+    - meson test --print-errorlogs --suite unit --wrap='valgrind --error-exitcode=1 --leak-check=full --tool=memcheck --track-origins=yes'
   artifacts:
     paths:
       - build
     expire_in: 2 hrs
+    reports:
+      junit: build/$TARGET/meson-logs/testlog-valgrind.junit.xml
   dependencies:
+    - Restore:x86_64-linux-gnu
+    - Build:x86_64-linux-gnu
+  needs:
     - Restore:x86_64-linux-gnu
     - Build:x86_64-linux-gnu
 
@@ -86,6 +97,9 @@ Test:arm-linux-gnueabihf:
     TARGET: arm-linux-gnueabihf
   tags: ["armhf"]
   dependencies:
+    - Restore:arm-linux-gnueabihf
+    - Build:arm-linux-gnueabihf
+  needs:
     - Restore:arm-linux-gnueabihf
     - Build:arm-linux-gnueabihf
   when: manual
@@ -99,6 +113,9 @@ Test:x86_64-alpine-linux-musl:
   variables:
     TARGET: x86_64-alpine-linux-musl
   dependencies:
+    - Restore:x86_64-alpine-linux-musl
+    - Build:x86_64-alpine-linux-musl
+  needs:
     - Restore:x86_64-alpine-linux-musl
     - Build:x86_64-alpine-linux-musl
 
@@ -119,6 +136,10 @@ Coverage: &coverage
     - Restore:x86_64-linux-gnu
     - Build:x86_64-linux-gnu
     - Test:x86_64-linux-gnu
+  needs:
+    - Restore:x86_64-linux-gnu
+    - Build:x86_64-linux-gnu
+    - Test:x86_64-linux-gnu
 
 Check:
   stage: analysis
@@ -134,13 +155,16 @@ Check:
     expire_in: 1 week
   dependencies:
     - Restore:x86_64-linux-gnu
+  needs:
+    - Restore:x86_64-linux-gnu
 
-Package:x86_64-linux-gnu: &package
+PackageShared:x86_64-linux-gnu: &package
   stage: package
   variables:
     TARGET: x86_64-linux-gnu
+    LINK_VARIANT: shared
   script:
-    - meson -Dprefix=`pwd`/dist/$TARGET -Ddefault_library=static -Dbuildtype=release -Doptimization=3 --cross-file=$TARGET package/$TARGET
+    - meson -Dprefix=`pwd`/dist/$TARGET -Dbuildtype=release -Doptimization=3 --cross-file=$TARGET -Ddefault_library=$LINK_VARIANT package/$TARGET
     - cd package/$TARGET
     - ninja
     - ninja install
@@ -149,17 +173,39 @@ Package:x86_64-linux-gnu: &package
       - dist
     expire_in: 1 mos
   dependencies: []
+  needs: []
 
-Package:arm-linux-gnueabihf:
+PackageStatic:x86_64-linux-gnu:
+  <<: *package
+  variables:
+    TARGET: x86_64-linux-gnu
+    LINK_VARIANT: static
+
+PackageShared:arm-linux-gnueabihf:
   <<: *package
   variables:
     TARGET: arm-linux-gnueabihf
+    LINK_VARIANT: shared
 
-Package:x86_64-alpine-linux-musl:
+PackageStatic:arm-linux-gnueabihf:
+  <<: *package
+  variables:
+    TARGET: arm-linux-gnueabihf
+    LINK_VARIANT: static
+
+PackageShared:x86_64-alpine-linux-musl:
   <<: *package
   image: reg.handtruth.com/roots/cpp-meson/build:alpine
   variables:
     TARGET: x86_64-alpine-linux-musl
+    LINK_VARIANT: shared
+
+PackageStatic:x86_64-alpine-linux-musl:
+  <<: *package
+  image: reg.handtruth.com/roots/cpp-meson/build:alpine
+  variables:
+    TARGET: x86_64-alpine-linux-musl
+    LINK_VARIANT: static
 
 AlpineDockerImage:
   stage: image
@@ -176,10 +222,13 @@ AlpineDockerImage:
     - docker push $IMAGE_TAG
     - docker rmi $IMAGE_TAG
   tags: ["docker"]
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH == "release-2.0.0"
+      when: always
   dependencies:
-    - Package:x86_64-alpine-linux-musl
+    - PackageStatic:x86_64-alpine-linux-musl
+  needs:
+    - PackageStatic:x86_64-alpine-linux-musl
 
 Deploy:
   stage: deploy
@@ -190,12 +239,14 @@ Deploy:
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker pull $IMAGE_TAG
-    - docker stop mcsnet-mcshub
-    - docker rm mcsnet-mcshub
+    - docker stop mcsnet-mcshub && docker rm mcsnet-mcshub || true
     - docker restart mcsman
   tags: ["deploy"]
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH == "release-2.0.0"
+      when: always
   cache:
     paths: []
   dependencies: []
+  needs:
+    - AlpineDockerImage

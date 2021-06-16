@@ -13,6 +13,8 @@
 #include <vector>
 #include <cstdio>
 
+#include <ekutils/log.hpp>
+
 namespace std {
     inline string to_string(const std::string & str) {
         return str;
@@ -143,6 +145,7 @@ struct {
 void test_function();
 
 int main() {
+    ekutils::log = new ekutils::stdout_log(ekutils::log_level::debug);
     std::cout << "entering test..." << std::endl;
     try {
         test_function();

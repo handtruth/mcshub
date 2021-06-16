@@ -1,4 +1,4 @@
-#include "client.hpp"
+#include "portal.hpp"
 
 #include <cstring>
 #include <cassert>
@@ -6,93 +6,14 @@
 #include <system_error>
 
 #include <ekutils/log.hpp>
+#include <ekutils/resolver.hpp>
 
 #include "hosts_db.hpp"
 #include "strparts.hpp"
 
 namespace mcshub {
 
-template <typename P>
-bool gate::paket_read(P & packet) {
-	std::int32_t id, size;
-	if (!head(id, size))
-		return false;
-	int s = packet.read(input.data(), size);
-	if (std::int32_t(s) != size)
-		throw bad_request("packet format error " + std::to_string(s) + " " + std::to_string(size));
-	input.move(size);
-	return true;
-}
-
-template <typename P>
-void gate::paket_write(const P & packet) {
-	std::size_t size = 10 + packet.size();
-	output.asize(size);
-	int s = packet.write(output.data() + output.size() - size, size);
-#	ifdef DEBUG
-		if (s < 0)
-			throw "IMPOSSIBLE SITUATION";
-#	endif
-	output.ssize(size - s);
-	send(); // Init transmission
-}
-
-bool gate::head(std::int32_t & id, std::int32_t & size) const {
-	int s = pakets::head(input.data(), input.size(), size, id);
-	if (s == -1)
-		return false;
-	if (size < 0)
-		throw bad_request("packet size is lower than 0");
-	conf_snap conf;
-	std::int32_t max_size = conf->max_packet_size;
-	if (max_size != -1 && size > max_size)
-		throw bad_request("the maximum allowed packet size was reached");
-	size += s;
-	return std::size_t(size) <= input.size();
-}
-
-void gate::kostilA() {
-	pakets::request req;
-	std::size_t sz = req.size() + 10;
-	input.asize(sz);
-	int r = req.write(input.data() + input.size() - sz, sz);
-	assert(r != -1);
-	input.ssize(sz - r);
-}
-
-void gate::kostilB(const std::string & nick) {
-	pakets::login login;
-	login.name() = nick;
-	std::size_t size = login.size() + 10;
-	input.asize(size);
-	int r = login.write(input.data() + input.size() - size, size);
-	assert(r != -1);
-	input.ssize(size - r);
-}
-
-void gate::tunnel(gate & other) {
-	other.output.append(input.data(), input.size());
-	input.clear();
-	other.send();
-}
-
-void gate::receive() {
-	std::size_t avail = sock.avail();
-	std::size_t old = input.size();
-	input.asize(avail);
-	sock.read(input.data() + old, avail);
-}
-
-void gate::send() {
-	if (output.size() == 0)
-		return;
-	int written = sock.write(output.data(), output.size());
-	if (written == -1)
-		return;
-	output.move(written);
-}
-
-std::atomic<long> portal::globl_id = 0;
+ekutils::idgen<long> portal::globl_id;
 
 void portal::set_from_state_by_hs() {
 	switch (hs.state()) {
@@ -178,21 +99,21 @@ void portal::from_handshake() {
 	if (r.drop)
 		throw bad_request("drop");
 	rec = r;
-	if (!r.address.empty() && r.port) {
+	if (!r.address.empty()) {
 		try {
-			connect(to.sock, conf->dns_cache && !r.mcsman, r.address, r.port);
+			to.sock = connect(conf->dns_cache, r.address);
 			to_s = state_t::connect;
 			from_s = state_t::wait;
-			log_verbose("attempt to connect to " + r.address + ":" + std::to_string(r.port));
+			log_verbose("attempt to connect to " + r.address);
 			using namespace ekutils::actions;
-			poll.add(to.sock, in | out | rdhup | err | et, [this](auto &, std::uint32_t events) {
+			poll.add(*to.sock, in | out | rdhup | err | et, [this](auto &, std::uint32_t events) {
 				on_to_event(events);
 			});
 			timeout = poll.later(std::chrono::milliseconds { conf->timeout }, [this]() {
 				on_timeout();
 			});
 			return;
-		} catch (const ekutils::dns_error &) {
+		} catch (const ekutils::net::resolution &) {
 
 		}
 	}
@@ -281,8 +202,9 @@ void portal::to_proxy() {
 	to.tunnel(from);
 }
 
-portal::portal(ekutils::tcp_socket_d && sock, ekutils::epoll_d & p) :
-	id(globl_id++), from(std::move(sock)), poll(p), rec(std::ref(conf->default_server)),
+portal::portal(stream_sock && sock, ekutils::epoll_d & p) :
+	id(globl_id.next()), from(std::move(sock)),
+	poll(p), rec(std::ref(conf->default_server)),
 	vars(main_vars, srv_vars, f_vars, i_vars, hs, env_vars) {}
 
 void portal::on_from_event(std::uint32_t events) {
@@ -329,7 +251,7 @@ void portal::on_to_event(std::uint32_t events) {
 				case state_t::connect: {
 					// Close server gate and send fake status instead
 					set_from_state_by_hs();
-					poll.remove(to.sock);
+					poll.remove(*to.sock);
 					return;
 				}
 				default: {
@@ -344,7 +266,7 @@ void portal::on_to_event(std::uint32_t events) {
 				case state_t::proxy: {
 					// Close server gate and send fake status instead
 					set_from_state_by_hs();
-					log_debug("error occured while backend " + std::string(to.sock.remote_endpoint())
+					log_debug("error occured while backend " + to.sock->remote_endpoint().to_string()
 						+ " connect process: " + std::make_error_code(std::errc(errno)).message());
 					if (from.avail_read() < 2) {
 						if (hs.state() == 1)
@@ -353,7 +275,7 @@ void portal::on_to_event(std::uint32_t events) {
 							from.kostilB(nickname);
 					}
 					process_from_request();
-					to.sock.close();
+					to.sock->close();
 					return;
 				}
 				default: {
@@ -372,9 +294,9 @@ void portal::on_to_event(std::uint32_t events) {
 		if (events & actions::out) {
 			switch (to_s) {
 				case state_t::connect: {
-					std::errc err = to.sock.last_error();
+					std::errc err = to.sock->last_error();
 					if (err == std::errc(0))
-						err = to.sock.last_error();
+						err = to.sock->last_error();
 					if (err == std::errc(0)) {
 						// Async connection established
 						log_verbose("async connection #" + std::to_string(id) + " established");
@@ -382,7 +304,7 @@ void portal::on_to_event(std::uint32_t events) {
 					} else {
 						log_verbose("async connection #" + std::to_string(id) + " to backend server failed");
 						set_from_state_by_hs();
-						to.sock.close(); // This step will destroy current lambda object, not safe
+						to.sock->close(); // This step will destroy current lambda object, not safe
 						return;
 					}
 					break;
@@ -398,9 +320,7 @@ void portal::on_to_event(std::uint32_t events) {
 		}
 	} catch (const std::exception & e) {
 		if (to_s == state_t::connect || to_s == state_t::proxy) {
-			std::errc err = to.sock.ensure_connected();
-			if (err == std::errc(0))
-				err = to.sock.last_error();
+			std::errc err = to.sock->last_error();
 			if (err == std::errc(0)) {
 				// Async connection established
 				log_verbose("async connection #" + std::to_string(id) + " established");
@@ -415,7 +335,7 @@ void portal::on_to_event(std::uint32_t events) {
 					else
 						from.kostilB(nickname);
 				}
-				to.sock.close(); // This step will destroy current lambda object, not safe
+				to.sock->close(); // This step will destroy current lambda object, not safe
 				return;
 			}
 		}
@@ -438,7 +358,7 @@ void portal::on_timeout() {
 	switch (to_s) {
 		case state_t::connect:
 			set_from_state_by_hs();
-			to.sock.close();
+			to.sock->close();
 			log_debug("connection timeout #" + std::to_string(id));
 			process_from_request();
 			return;

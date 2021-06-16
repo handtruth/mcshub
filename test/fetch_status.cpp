@@ -12,8 +12,8 @@ test {
 	using namespace mcshub;
 	using namespace std::chrono_literals;
 	using namespace std::string_literals;
-	mcshub::mcshub server(ekutils::stream::in | ekutils::stream::err);
-	mcshub::sclient client = server.client();
+	::mcshub::mcshub server(ekutils::stream::in | ekutils::stream::err);
+	::mcshub::sclient client = server.client();
 	pakets::response res = client.status("localhost", server.port());
 	std::cout << res.message() << std::endl;
 

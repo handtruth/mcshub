@@ -69,5 +69,7 @@
         "bitset": "cpp",
         "regex": "cpp",
         "valarray": "cpp"
-    }
+    },
+    "mesonbuild.buildFolder": "build",
+    "mesonbuild.configureOnOpen": true
 }

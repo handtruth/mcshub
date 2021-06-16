@@ -1,20 +1,24 @@
-#ifndef _MANAGER_HEAD
-#define _MANAGER_HEAD
+#ifndef MANAGER_HEAD_SPPVKRKFJNKW
+#define MANAGER_HEAD_SPPVKRKFJNKW
 
-#include <ekutils/cli.hpp>
-#include <ekutils/stdin_d.hpp>
-#include <ekutils/reader.hpp>
+#include <ekutils/uri.hpp>
+#include <ekutils/socket_d.hpp>
+#include <ekutils/ip_filter.hpp>
+#include <ekutils/epoll_d.hpp>
 
 namespace mcshub {
 
 class manager {
-	ekutils::choice_cli_node root;
-	ekutils::reader input = ekutils::reader(ekutils::input);
+	ekutils::epoll_d & multiplexer;
+	ekutils::net::ip_filter filter;
+	std::unique_ptr<ekutils::net::datagram_server_socket_d> socket;
+
 public:
-	manager();
-	void on_line();
+	manager(ekutils::epoll_d & poll, const ekutils::uri & uri);
+	void start();
+	~manager();
 };
 
 } // namespace mcshub
 
-#endif // _MANAGER_HEAD
+#endif // MANAGER_HEAD_SPPVKRKFJNKW

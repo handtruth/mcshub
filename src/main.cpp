@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "prog_args.hpp"
+#include "mcshub_arguments.hpp"
 #include "mcshub.hpp"
 
 int main(int argc, char *argv[]) {
@@ -9,7 +9,7 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 	try {
-		mcshub::arguments.parse(argc - 1, (const char **)argv + 1);
+		mcshub::arguments.parse(argc, argv);
 	} catch (const std::exception & e) {
 		std::cerr << "invalid program arguments: " << e.what() << std::endl;
 		return EXIT_FAILURE;

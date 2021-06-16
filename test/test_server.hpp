@@ -21,9 +21,8 @@
 #include <ekutils/log.hpp>
 #include <ekutils/idgen.hpp>
 
-#include "client.hpp"
 #include "settings.hpp"
-#include "prog_args.hpp"
+#include "mcshub_arguments.hpp"
 #include "mcshub.hpp"
 #include "sclient.hpp"
 #include "thread_controller.hpp"
@@ -36,7 +35,7 @@ arguments_t test_arguments() {
 	arguments_t args = arguments;
 	args.threads = 1;
 	args.verb = ekutils::log_level::debug;
-	args.port = 0;
+	args.address = "tcp://localhost:0";
 	args.cli = true;
 	return args;
 }
@@ -62,7 +61,6 @@ YAML::Node base_record2yaml(const settings::basic_record & record) {
 		node["login"] = record.login.src();
 	if (!record.status.empty())
 		node["status"] = record.status.src();
-	insert_int(node, port, record);
 	if (!record.vars.empty()) {
 		YAML::Node vars;
 		for (auto & each : record.vars) {
@@ -93,7 +91,6 @@ YAML::Node settings2yaml(const settings & config) {
 	insert_str(node, domain, config);
 	insert_str(node, log, config);
 	insert_int(node, max_packet_size, config);
-	insert_int(node, port, config);
 	insert_int(node, threads, config);
 	insert_int(node, timeout, config);
 	if (config.verb != ekutils::log_level::none)
@@ -204,9 +201,9 @@ mcshub::mcshub(const arguments_t & args, const std::shared_ptr<confset> & dir, i
 	arguments = args;
 	assert(-1 != chdir(dir->path.c_str()));
 	return entrypoint("mcshub-test", [&event](){
-		log_info("BEGIN TESTS");
+		log_info("BEGIN TESTS: portn " + std::to_string(thread_controller::real_port));
 		event.write(thread_controller::real_port);
-		event.close();
+		// event.close();
 	});
 }, ekutils::process_opts {
 	streams

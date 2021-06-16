@@ -11,7 +11,6 @@ void print_record(const mcshub::settings::server_record & record) {
     using namespace mcshub;
     static auto tab = string("\t");
     log->info(tab + "address " + record.address);
-    log->info(tab + "port " + to_string(record.port));
     log->info(tab + "status " + record.status.resolve());
     log->info(tab + "login " + record.login.resolve());
     string result = tab + "vars: { ";
@@ -54,7 +53,6 @@ servers:
     conf.load(input);
 
     log->info("address " + std::string(conf.address));
-    log->info("port " + to_string(conf.port));
     log->info("threads " + to_string(conf.threads));
     log->info("log " + std::string(conf.log));
     log->info("verb " + log_lvl2str(conf.verb));

@@ -8,126 +8,79 @@
 #include <netdb.h>
 
 #include <ekutils/socket_d.hpp>
+#include <ekutils/arguments.hpp>
 #include <ekutils/expandbuff.hpp>
 
 #include "config.hpp"
 #include "sclient.hpp"
 
-struct host_error : public std::runtime_error {
-	explicit host_error(const std::string & message) : std::runtime_error(message) {}
-};
-
-struct host_info {
-	std::string host;
-	std::string port;
-	host_info(const char * str) {
-		switch (*str) {
-			case '\0':
-				return;
-			case '[': {
-				const char * begin = str;
-				while (*str != ']') {
-					if (*str == '\0')
-						throw host_error("ipv6 square bracket '[' not closed");
-					str++;
-				}
-				host.append(begin + 1, str - begin - 1);
-				if (*str == ']')
-					str++;
-				break;
-			}
-			default: {
-				const char * begin = str;
-				while (*str != ':' && *str) str++;
-				host.append(begin, str - begin);
-				break;
-			}
-		}
-		if (*str) {
-			str++;
-			port = str;
-		} else {
-			port = "25565";
-		}
+struct pargs_t : public ekutils::arguments {
+	bool & help = add<flag>("help", [](flag & opt) {
+		opt.hint = "display this help message and exit";
+		opt.c = 'h';
+	});
+	bool & version = add<flag>("version", [](flag & opt) {
+		opt.hint = "print version number and exit";
+		opt.c = 'v';
+	});
+	bool & ping = add<flag>("ping", [](flag & opt) {
+		opt.hint = "ping 3 times, after receiving status";
+		opt.c = 'p';
+	});
+	pargs_t() {
+		positional_hint = "<address> [record_name]";
 	}
-};
+} pargs;
 
-void print_usage(std::ostream & output, const char * prog) {
-	output << "Usage: " << prog << R"==( <option> | <address[:port] [action]>
-Options:
-  -h, --help     display this help message and exit
-  -v, --version  print version number and exit
-Actions:
-  status         fetch JSON status object
-  ping           ping server
+void print_usage(std::ostream & output, const std::string_view & prog) {
+	output << pargs.build_help(prog) << R"==(
+Arguments:
+  address      address of a Minecraft server
+               tcp://mc.example.com:25577
+  record_name  virtual server name (default:
+               addressed hostname)
 )==";
 }
 
-enum class acts_enum {
-	status, ping
-};
-
-void entry(host_info & host, acts_enum act);
-
 int main(int argc, char *argv[]) {
-	if (argc < 2) {
-		std::cerr << "1 argument required at least" << std::endl;
-		print_usage(std::cerr, argv[0]);
-		return EXIT_FAILURE;
-	}
-	if (argc == 2) {
-		std::string opt = argv[1];
-		if (opt == "-v" || opt == "--version") {
-			std::cout << config::build << std::endl;
-			return 0;
-		} else if (opt == "-h" || opt == "--help") {
-			print_usage(std::cout, argv[0]);
-			return 0;
-		}
-	}
-	if (argc >= 4) {
-		std::cerr << "maximum 2 arguments are allowed" << std::endl;
-		print_usage(std::cerr, argv[0]);
-		return EXIT_FAILURE;
-	}
-	acts_enum act = acts_enum::status;
-	if (argc == 3) {
-		std::string opt = argv[2];
-		if (opt == "status")
-			act = acts_enum::status;
-		else if (opt == "ping")
-			act = acts_enum::ping;
-		else {
-			std::cerr << "only status and ping actions supported" << std::endl;
-			print_usage(std::cerr, argv[0]);
-			return EXIT_FAILURE;
-		}
-	}
 	try {
-		host_info host(argv[1]);
-		entry(host, act);
+		pargs.parse(argc, argv);
+		if (!pargs.help && !pargs.version && pargs.positional.size() != 1 && pargs.positional.size() != 2)
+			throw ekutils::arguments_parse_error("invalid number of positional arguments");
+	} catch (const ekutils::arguments_parse_error & e) {
+		std::cerr << e.what() << std::endl;
+		print_usage(std::cerr, argv[0]);
+		return EXIT_FAILURE;
 	} catch (const std::exception & e) {
 		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
-	return EXIT_SUCCESS;
-}
-
-void entry(host_info & host, acts_enum act) {
-	using namespace mcshub;
-	sclient client(host.host, host.port);
-	switch (act) {
-		case acts_enum::status: {
-			pakets::response res = client.status(host.host);
-			std::cout << res.message() << std::endl;
-			break;
+	if (pargs.help) {
+		print_usage(std::cout, argv[0]);
+		return EXIT_SUCCESS;
+	}
+	if (pargs.version) {
+		std::cout << config::build << std::endl;
+		return EXIT_SUCCESS;
+	}
+	try {
+		using namespace mcshub;
+		const ekutils::uri uri = pargs.positional.front();
+		sclient client(uri);
+		const std::string host = (pargs.positional.size() == 2) ? std::move(pargs.positional[1]) : uri.get_host();
+		const std::uint16_t port = (uri.get_port() == -1) ? 25565u : static_cast<std::uint16_t>(uri.get_port());
+		pakets::response res = client.status(host, port);
+		std::cout << res.message() << std::endl;
+		using namespace std::chrono;
+		if (pargs.ping) {
+			for (int i = 0; i < 3; ++i) {
+				std::chrono::milliseconds time = client.ping();
+				std::cout << time.count() << "ms" << std::endl;
+			}
 		}
-		case acts_enum::ping: {
-			client.status(host.host);
-			using namespace std::chrono;
-			std::chrono::milliseconds time = client.ping();
-			std::cout << time.count() << "ms" << std::endl;
-			break;
-		}
+		return EXIT_SUCCESS;
+	} catch (const std::exception & e) {
+		std::cerr << e.what() << std::endl;
+		return EXIT_FAILURE;
 	}
 }
